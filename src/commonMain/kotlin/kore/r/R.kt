@@ -2,7 +2,6 @@ package kore.r
 
 import kotlin.jvm.JvmInline
 
-
 /**
  * 성공, 실패를 내포하는 결과값 보고 객체. 최초 값을 람다로 설정하면 이후 모든 map연산이 지연연산으로 처리됨
  */
@@ -31,7 +30,7 @@ value class R<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi in
         is Function0<*> -> R{block(value.invoke() as VALUE)}
         else -> R(block(value as VALUE))
     }
-    /** 최초의 값을 람다로 지정하지 않아도 이후 lazy하게 변경함*/
+    /** 최초의 값을 람다로 지정하지 않아도 이후 지연연산하게 변경함*/
     inline fun <OTHER:Any> mapLazy(crossinline block:(VALUE)->OTHER):R<OTHER> = when(value){
         is Throwable -> this as R<OTHER>
         is Function0<*> -> R{block(value.invoke() as VALUE)}
