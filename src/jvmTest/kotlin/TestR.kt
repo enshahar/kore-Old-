@@ -20,6 +20,7 @@ class TestR {
         val r1 = R.ok(5)
         val r2 = r1.map{it*3}.map{it+3}
         assertEquals(r2(), 18)
+        assertEquals(r1.map{"a"}(), "a")
         val r3 = R.ok{4}
         val r4 = r3.map {
             println("map1")
@@ -31,5 +32,15 @@ class TestR {
         println("before lazy")
         assertEquals(r4(), 15)
         println("after lazy")
+        assertEquals(r3.map{"a"}(), "a")
+        val r5 = r3.map<Int>{
+            println("m--")
+            throw Throwable("1")
+        }
+        assertEquals(r5{ 10 }, 10)
+        println("a")
+        assertEquals(r5(), null)
+        val r6 = R.ok(3)
+        assertEquals(r6{7}, 3)
     }
 }
