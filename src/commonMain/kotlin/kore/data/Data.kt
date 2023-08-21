@@ -4,14 +4,14 @@ import kore.error.E
 import ein2b.core.entity.Union
 import ein2b.core.entity.field.*
 import kore.data.task.TaskStore
-import kore.data.task.Tasks
+import kore.data.task.Task
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 abstract class Data:ReadWriteProperty<Data, Any>{
     class NoIndex(name:String):E(name)
-//  class GetValue_notInitialized():E()
+    class NotInitialized(name:String):E(name)
 //        getValue_taskFail,
 //        setValue_ruleFail,
 //        setValue_taskFail,
@@ -62,15 +62,11 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         val name = property.name
         var result:Any = _values!![name] ?:
         run{
-            TaskStore.default<Any>(this, name)?.value?.let{
+            TaskStore.default<Any>(this::class, name)?.let{
                 setValue(thisRef, property, it)
                 _values!![property.name]
             }
-        } ?:
-        throw E(
-            ERROR.getValue_notInitialized,
-            "not initialized. ${this::class.simpleName}.${name}"
-        )
+        } ?: NotInitialized(name).terminate()
         TaskStore.getTask(this, name)?.let{ list->
             list.forEach{task->
                 task(result)?.let{
@@ -149,10 +145,10 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     val stringMap get() = stringMap()
 
     var _lastIndex = -1
-    var _task: Tasks? = null
+    var _task: Task? = null
     @Suppress("NOTHING_TO_INLINE")
     inline fun <FIELD:Field<*>> FIELD.firstTask():FIELD?{
-        return TaskStore.getFirstTasks(this@Data)?.let{
+        return TaskStore.firstTask(this@Data)?.let{
             if(_task == null || _index != _lastIndex){
                 _lastIndex = _index
                 _task = it

@@ -8,7 +8,7 @@ import ein2b.core.entity.task.*
 import ein2b.core.validation.eVali
 import kore.data.task.DefaultFactoryTask
 import kore.data.task.DefaultTask
-import kore.data.task.Tasks
+import kore.data.task.Task
 import kotlin.jvm.JvmInline
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadWriteProperty
@@ -68,7 +68,7 @@ abstract class Field<VALUE:Any>{
     }
 
     @JvmInline
-    value class Encoding(val task: Tasks?){
+    value class Encoding(val task: Task?){
         @Suppress("NOTHING_TO_INLINE")
         inline fun isExcluded(){
             task?.run{ include = isNotInclude }

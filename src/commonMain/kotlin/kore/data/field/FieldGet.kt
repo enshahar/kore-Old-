@@ -1,9 +1,9 @@
 package ein2b.core.entity.field
 
-import kore.data.task.Tasks
+import kore.data.task.Task
 
-class FieldGet(private val tasks: Tasks){
+class FieldGet(private val task: Task){
     fun add(task: ConvertTask){
-        (tasks.getTasks ?: arrayListOf<ConvertTask>().also{ tasks.getTasks = it}).add(task)
+        (this.task.getTasks ?: arrayListOf<ConvertTask>().also{ this.task.getTasks = it}).add(task)
     }
 }

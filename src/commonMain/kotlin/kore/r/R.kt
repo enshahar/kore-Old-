@@ -10,21 +10,17 @@ import kotlin.jvm.JvmInline
 value class R<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi internal val value:Any){
     companion object{
         /** 특정 블록 실행을 통한 R생성 */
-        inline operator fun <VALUE:Any>invoke(block:()->VALUE):R<VALUE> = try {
-            ok(block())
+        inline fun <VALUE:Any>catch(block:()->VALUE):R<VALUE> = try {
+            R(block())
         }catch(e:Throwable){
-            fail(e)
-        }
-        inline operator fun <VALUE:Any>invoke(value:Any):R<VALUE> = when(value){
-            is Throwable -> fail(value)
-            else -> R(value)
+            R(e)
         }
         /** 정상인 값을 생성함 */
-        inline fun <VALUE:Any>ok(value:VALUE):R<VALUE> = R(value)
+        inline operator fun <VALUE:Any>invoke(value:Any):R<VALUE> = R(value)
         /** 정상인 값을 람다로 생성함. 이후 모든 처리는 지연연산으로 처리되고 invoke시점까지 평가가 미뤄짐 */
-        inline fun <VALUE:Any>ok(noinline f:()->VALUE):R<VALUE> = R(f)
+        inline operator fun <VALUE:Any>invoke(noinline f:()->VALUE):R<VALUE> = R(f)
         /** 실패인 값을 예외객체로 생성함*/
-        inline fun <VALUE:Any>fail(fail:Throwable):R<VALUE> = R(fail)
+        inline operator fun <VALUE:Any>invoke(value:Throwable):R<VALUE> = R(value)
     }
     /** R타입을 유지한 상태로 내부의 상태를 바꾸는 연산. 지연연산 모드에서는 계속 지연함수합성이 됨.
      *  map에 전달되는 람다는 throw할 수 있으며 이를 통해 fail상태로 이전시킬 수 있음.

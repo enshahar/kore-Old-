@@ -1,7 +1,7 @@
 package kore.data.task
 
 
-class Tasks{
+class Task{
     //var vali:eVali? = null
     var default:Any? = null
     var setTasks:ArrayList<(Any)->Any?>? = null
