@@ -1,7 +1,8 @@
 package ein2b.core.entity.field
 
-import ein2b.core.entity.Union
+import kore.data.Union
 import kore.data.Data
+import kore.data.field.Field
 import kore.data.task.DefaultFactoryTask
 import kotlin.reflect.KClass
 

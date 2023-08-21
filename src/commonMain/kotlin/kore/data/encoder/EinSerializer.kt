@@ -6,7 +6,9 @@ import ein2b.core.entity.field.*
 import ein2b.core.entity.indexer.Indexer
 import kore.data.task.TaskStore
 import kore.data.Data
+import kore.data.Union
 import kore.data.eSlowEntity
+import kore.data.field.*
 import kore.error.E
 import kotlin.reflect.KClass
 
@@ -131,7 +133,7 @@ object EinSerializer:Serializer<String>{
         },
         UnionMapField::class to { v, field, r->
             var result = ""
-            val un:Union<Data> = (field as UnionMapField<*>).union
+            val un: Union<Data> = (field as UnionMapField<*>).union
             if((v as Map<String, *>).all{ (k, it) ->
                     encodeUnion(it!!, un, r)?.let{ value ->
                         result += "|" + encodeString(k) + "|" + value
@@ -393,9 +395,9 @@ object EinSerializer:Serializer<String>{
      * 디코더에서 사용하는 빈 객체
      * get()으로 값을 가져올 수 없음
      */
-    private val entry:Map.Entry<String,Field<*>> = object:Map.Entry<String,Field<*>>{
+    private val entry:Map.Entry<String, Field<*>> = object:Map.Entry<String, Field<*>>{
         override val key:String get() = throw E(Data.ERROR.encode_error,"")
-        override val value:Field<*> get() = throw E(Data.ERROR.encode_error,"")
+        override val value: Field<*> get() = throw E(Data.ERROR.encode_error,"")
     }
 
     /**
@@ -418,7 +420,7 @@ object EinSerializer:Serializer<String>{
         val result:ArrayList<String> = ArrayList<String>(fields.size).also{list->repeat(fields.size){list.add("")}}
 
         return if(values.all{ (k,v) ->
-            val field:Field<*> = fields[k] ?: return report(Data.ERROR.encode_error,"no field ${type.simpleName}.${k}")
+            val field: Field<*> = fields[k] ?: return report(Data.ERROR.encode_error,"no field ${type.simpleName}.${k}")
 
             //1단계 키에 해당되는 store의 tasks를 가져와서
             val include = TaskStore.include(entity,k)
@@ -455,7 +457,7 @@ object EinSerializer:Serializer<String>{
         (v as Map<String,*>).forEach{(k,it)-> result += "|" + encodeString(k) + "|" + it.toString() }
         return encodeResult(result)
     }
-    private inline fun encodeUnion(it:Any, union:Union<*>, report:Report):String?{
+    private inline fun encodeUnion(it:Any, union: Union<*>, report:Report):String?{
         val type:KClass<out Any> = it::class
         val index:Int = union.type.indexOf(type)
         if(index == -1) return report(Data.ERROR.encode_error,"invalid union subtype. unionType:${union.type},entity:${type.simpleName}")
@@ -469,7 +471,7 @@ object EinSerializer:Serializer<String>{
     private inline fun <ENTITY: Data> decodeEntity(serial:String, cursor: Cursor, entity:ENTITY, report: Report):ENTITY?{
         val type:KClass<out Data> = entity::class
         //val fields:HashMap<String,Field<*>> = Field[type] ?: return entity
-        val fields:HashMap<String,Field<*>> = entity.fields
+        val fields:HashMap<String, Field<*>> = entity.fields
 
         if(entity.fields.isEmpty()) {
             if(serial[cursor.v++] == '|') {
@@ -479,7 +481,7 @@ object EinSerializer:Serializer<String>{
             }
         }
 
-        val convert:ArrayList<Map.Entry<String,Field<*>>> = ArrayList<Map.Entry<String,Field<*>>>(fields.size).also{ list->repeat(fields.size){list.add(entry)}}
+        val convert:ArrayList<Map.Entry<String, Field<*>>> = ArrayList<Map.Entry<String, Field<*>>>(fields.size).also{ list->repeat(fields.size){list.add(entry)}}
         fields.forEach{
             convert[Indexer.get(type,it.key)] = it
         }

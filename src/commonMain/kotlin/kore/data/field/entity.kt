@@ -2,6 +2,7 @@ package ein2b.core.entity.field
 
 import kore.data.Data
 import kore.data.eSlowEntity
+import kore.data.field.Field
 import kore.data.task.DefaultFactoryTask
 import kotlin.reflect.KClass
 

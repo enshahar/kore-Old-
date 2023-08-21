@@ -9,7 +9,7 @@ import kotlin.reflect.KClass
 object Indexer{
     @PublishedApi internal val indexes:HashMap<KClass<out Data>, HashMap<String, Int>> = hashMapOf()
     inline fun set(type:KClass<out Data>, name:String, i: Int){
-        (indexes[type] ?: hashMapOf<String, Int>().also{indexes[type] = it})[name] = i
+        indexes.getOrPut(type){hashMapOf()}[name] = i
     }
     inline fun get(type:KClass<out Data>, name:String): Wrap<Int> = indexes[type]?.get(name)?.let{ W(it) } ?: W(Data.NoIndex(name))
 }

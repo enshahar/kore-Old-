@@ -1,15 +1,13 @@
-package ein2b.core.entity
+package kore.data
 
-import kore.data.Data
 import kotlin.reflect.KClass
 
 abstract class Union<out T: Data>(vararg val factories:()->T){
-    private var types:ArrayList<KClass<*>>? = null
+    private var _type:ArrayList<KClass<*>>? = null
     val type:ArrayList<KClass<*>> get() {
-        if(types == null){
-            types = arrayListOf()
-            factories.forEach { types?.add(it()::class) }
-        }
-        return types!!
+        return _type ?: factories.fold(arrayListOf<KClass<*>>()){ list, item->
+            list.add(item()::class)
+            list
+        }.also{_type = it}
     }
 }

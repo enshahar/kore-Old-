@@ -6,7 +6,9 @@ import ein2b.core.entity.field.*
 import ein2b.core.entity.indexer.Indexer
 import kore.data.task.TaskStore
 import kore.data.Data
+import kore.data.Union
 import kore.data.eSlowEntity
+import kore.data.field.*
 import kore.error.E
 import kotlin.reflect.KClass
 
@@ -148,7 +150,7 @@ object JsonSerializer:Serializer<String>{
             val result = encodeUnionEntityM42(v,(f as UnionField<*>).union,r)
             if(result != null) "\"" + name + "\":" + result else null},
         UnionListField::class to { name, v, f, r->
-            val un:Union<Data> = (f as UnionListField<*>).union
+            val un: Union<Data> = (f as UnionListField<*>).union
             var result = ""
             var isFirst = true
             if((v as List<*>).all{e ->
@@ -163,7 +165,7 @@ object JsonSerializer:Serializer<String>{
         UnionMapField::class to { name, v, f, r->
             var result = ""
             var isFirst = true
-            val un:Union<Data> = (f as UnionMapField<*>).union
+            val un: Union<Data> = (f as UnionMapField<*>).union
             if((v as Map<String,*>).all{ (k, v) ->
                 encodeUnionEntityM42(v!!,un,r)?.let{ value ->
                     result += if(isFirst){
@@ -185,7 +187,7 @@ object JsonSerializer:Serializer<String>{
         DoubleField::class to { f, s, c, r-> decodeValue(s,c,r,String::toDoubleOrNull,f) },
         BooleanField::class to { f, s, c, r-> decodeValue(s,c,r,String::toBooleanStrictOrNull,f) },
         StringField::class to { _, s, c, r-> decodeStringValue(s,c,r) },
-        UtcField::class to fun(_:Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
+        UtcField::class to fun(_: Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
             return decodeStringValue(serial, cursor, report)?.let{
                 eUtc.of(it) ?: report(
                     Data.ERROR.decode_error,
@@ -196,7 +198,7 @@ object JsonSerializer:Serializer<String>{
                 "invalid eUtc,cursor:${cursor.v - 1},serial:$serial"
             )
         },
-        EnumField::class to fun(field:Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
+        EnumField::class to fun(field: Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
             val value = decodeStringValue(serial,cursor,report) ?: return null
             return (field as EnumField<*>).enums.find{it.name == value } ?: report(Data.ERROR.decode_error,"invalid enum,cursor:${cursor.v-1},serial:$serial")
         },
@@ -210,7 +212,7 @@ object JsonSerializer:Serializer<String>{
         DoubleListField::class to { _, s, c, r-> decodeList(s,c,r,String::toDoubleOrNull) },
         BooleanListField::class to { _, s, c, r-> decodeList(s,c,r,String::toBooleanStrictOrNull) },
         StringListField::class to { _, s, c, r-> decodeListPart(s,c,r) },
-        EnumListField::class to fun(field:Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
+        EnumListField::class to fun(field: Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
             val enums = (field as EnumListField<*>).enums
             val list = arrayListOf<Any>()
             openList(serial, cursor)
@@ -252,7 +254,7 @@ object JsonSerializer:Serializer<String>{
             }
             return result
         },
-        EnumMapField::class to fun(field:Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
+        EnumMapField::class to fun(field: Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
             var key:String
             var value:String
             val result = hashMapOf<String,Any>()
@@ -276,7 +278,7 @@ object JsonSerializer:Serializer<String>{
         SlowEntityField::class to { field, serial, cursor, report->
             decodeEntity(serial,cursor,(field as EntityField<*>).factory(),report)
         },
-        EntityListField::class to fun(field:Field<*>, serial:String, cursor:Cursor, report:Report):Any{
+        EntityListField::class to fun(field: Field<*>, serial:String, cursor:Cursor, report:Report):Any{
             val result = arrayListOf<Any>()
             openList(serial,cursor)
             if(skipSep(']', serial, cursor)) skipComma(serial,cursor)
@@ -289,7 +291,7 @@ object JsonSerializer:Serializer<String>{
             }
             return result
         },
-        SlowEntityListField::class to fun(field:Field<*>, serial:String, cursor:Cursor, report:Report):Any{
+        SlowEntityListField::class to fun(field: Field<*>, serial:String, cursor:Cursor, report:Report):Any{
             val result = arrayListOf<Any>()
             openList(serial,cursor)
             if(skipSep(']', serial, cursor)) skipComma(serial,cursor)
@@ -343,7 +345,7 @@ object JsonSerializer:Serializer<String>{
         UnionField::class to { field, serial, cursor, report->
             decodeUnionEntity(serial,cursor,(field as UnionField<*>).union,report)
         },
-        UnionListField::class to fun(field:Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
+        UnionListField::class to fun(field: Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
             val result = arrayListOf<Any>()
             openList(serial,cursor)
             if(skipSep(']', serial, cursor)) skipComma(serial,cursor)
@@ -356,7 +358,7 @@ object JsonSerializer:Serializer<String>{
             }
             return result
         },
-        UnionMapField::class to fun(field:Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
+        UnionMapField::class to fun(field: Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
             var key:String
             var value: Data
             val result:HashMap<String, Data> = hashMapOf()
@@ -375,10 +377,10 @@ object JsonSerializer:Serializer<String>{
             return result
         }
     )
-    fun setEncoder(type:KClass<*>,block:(name:String, v:Any, field:Field<*>, report:Report)->String?){
+    fun setEncoder(type:KClass<*>,block:(name:String, v:Any, field: Field<*>, report:Report)->String?){
         encoders[type] = block
     }
-    fun setDecoder(type:KClass<*>,block:(field:Field<*>, serial:String, cursor:Cursor, report:Report)->Any?){
+    fun setDecoder(type:KClass<*>,block:(field: Field<*>, serial:String, cursor:Cursor, report:Report)->Any?){
         decoders[type] = block
     }
     /**
@@ -397,7 +399,7 @@ object JsonSerializer:Serializer<String>{
     /**
      * encoders 등록 안되어 있을때 기본 정책은 "k":"v" 로 인코딩 함
      */
-    private fun encode(type:KClass<*>, k:String, v:Any, field:Field<*>, report:Report):String{
+    private fun encode(type:KClass<*>, k:String, v:Any, field: Field<*>, report:Report):String{
         return encoders[type]?.invoke(k,v,field,report) ?: encodeValue(k,v,field,report)
     }
 //    private inline fun decode(field:Field<*>, serial:String, cursor:Cursor, report:Report):Any?{
@@ -418,7 +420,7 @@ object JsonSerializer:Serializer<String>{
         val result:ArrayList<String> = ArrayList<String>(fields.size).also{ list-> repeat(fields.size){ list.add("") } }
 
         values.forEach{(k,v)->
-            val field:Field<*> = fields[k] ?:return report(Data.ERROR.encode_error,"no field ${type.simpleName}.${k}")
+            val field: Field<*> = fields[k] ?:return report(Data.ERROR.encode_error,"no field ${type.simpleName}.${k}")
             //if(k == "data") log("values::${k}::${field::class}:$v")
 
             //1단계 키에 해당되는 store의 tasks를 가져와서
@@ -448,7 +450,7 @@ object JsonSerializer:Serializer<String>{
     private inline fun encodeEntity(entity:Any, report:Report):String? = encodeObject(entity,report)?.joinToString(",")?.let{ """{${it}}""" }
 
     private const val unionIndexKey:String = "@@@"
-    private inline fun encodeUnionEntityM42(entity:Any, union:Union<*>, report:Report):String?{
+    private inline fun encodeUnionEntityM42(entity:Any, union: Union<*>, report:Report):String?{
         val unionType:KClass<out Any> = entity::class
         val index:Int = union.type.indexOf(unionType)
         if(index == -1) return report(Data.ERROR.encode_error,"invalid union subtype. unionType:${union.type},entity:${unionType.simpleName}")
@@ -460,7 +462,7 @@ object JsonSerializer:Serializer<String>{
     }
     private val SEP = " \t\n\r,]}".toCharArray()
     //private val SEP = ",]}".toCharArray()
-    private inline fun<T> decodeValue(serial:String, cursor:Cursor, report:Report, block:String.()->T?, field:Field<*>? = null):T?{
+    private inline fun<T> decodeValue(serial:String, cursor:Cursor, report:Report, block:String.()->T?, field: Field<*>? = null):T?{
         skipSpace(serial, cursor)
         val pin = cursor.v
         cursor.v = serial.indexOfAny(SEP,cursor.v++)
@@ -517,7 +519,7 @@ object JsonSerializer:Serializer<String>{
         }
         return list
     }
-    private inline fun <T> decodeMap(serial:String, cursor:Cursor, report:Report, block:String.()->T?, field:Field<*>):Any?{
+    private inline fun <T> decodeMap(serial:String, cursor:Cursor, report:Report, block:String.()->T?, field: Field<*>):Any?{
         var key:String
         var value:T
         val result = hashMapOf<String,T>()
@@ -538,7 +540,7 @@ object JsonSerializer:Serializer<String>{
 
     private val entry:Map.Entry<String, Field<*>> = object:Map.Entry<String, Field<*>>{
         override val key:String get() = throw E(Data.ERROR.encode_error,"")
-        override val value:Field<*> get() = throw E(Data.ERROR.encode_error,"")
+        override val value: Field<*> get() = throw E(Data.ERROR.encode_error,"")
     }
 
     private inline fun openObject(serial:String,cursor:Cursor):Boolean{
@@ -587,7 +589,7 @@ object JsonSerializer:Serializer<String>{
         }
         return entity
     }
-    private inline fun <ENTITY: Data,T:Union<ENTITY>> decodeUnionEntity(serial:String, cursor:Cursor, union:T, report:Report):ENTITY?{
+    private inline fun <ENTITY: Data,T: Union<ENTITY>> decodeUnionEntity(serial:String, cursor:Cursor, union:T, report:Report):ENTITY?{
         openObject(serial,cursor)
 
         var isM42Json = false
