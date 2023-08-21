@@ -4,15 +4,16 @@ import ein2b.core.date.eUtc
 import ein2b.core.entity.*
 import ein2b.core.entity.field.*
 import ein2b.core.entity.indexer.Indexer
-import ein2b.core.entity.task.Store
+import kore.data.task.TaskStore
 import kore.data.Data
 import kore.data.eSlowEntity
+import kore.error.E
 import kotlin.reflect.KClass
 
-fun Data.serializeEin(block:((Error) -> Unit)? = null):String? = EinSerializer.serialize(this, block)
-fun <T: Data> T.unserializeEin(serial:String, block:((Error) -> Unit)? = null):T? = EinSerializer.unserialize(this, serial, block)
-fun eSlowEntity.serializeEin(block:((Error) -> Unit)? = null):String? = EinSerializer.serialize(this, block)
-fun <T: eSlowEntity> T.unserializeEin(serial:String, block:((Error) -> Unit)? = null):T? = EinSerializer.unserialize(this, serial, block)
+fun Data.serializeEin(block:((E) -> Unit)? = null):String? = EinSerializer.serialize(this, block)
+fun <T: Data> T.unserializeEin(serial:String, block:((E) -> Unit)? = null):T? = EinSerializer.unserialize(this, serial, block)
+fun eSlowEntity.serializeEin(block:((E) -> Unit)? = null):String? = EinSerializer.serialize(this, block)
+fun <T: eSlowEntity> T.unserializeEin(serial:String, block:((E) -> Unit)? = null):T? = EinSerializer.unserialize(this, serial, block)
 
 private val encodeValue:(Any, Field<*>, Report)->String = { v, _, _->"$v"}
 private val encodeValueList:(Any, Field<*>, Report)->String = { v, _, _->(v as List<*>).joinToString("|")+"@"}
@@ -353,7 +354,7 @@ object EinSerializer:Serializer<String>{
         encoders[type] = block}
     fun setDecoder(type:KClass<*>,block:(field: Field<*>, serial:String, cursor: Cursor, report: Report)->Any?){
         decoders[type] = block}
-    override fun serialize(entity: Data, block:((Error)->Unit)?):String? {
+    override fun serialize(entity: Data, block:((E)->Unit)?):String? {
         val report = Report()
         val result = encodeEntity(entity, report)
         if(result == null){
@@ -362,7 +363,7 @@ object EinSerializer:Serializer<String>{
         return result
     }
 
-    override fun <ENTITY: Data> unserialize(entity:ENTITY, value:String, block:((Error)->Unit)?):ENTITY? {
+    override fun <ENTITY: Data> unserialize(entity:ENTITY, value:String, block:((E)->Unit)?):ENTITY? {
         val report = Report()
         val result = decodeEntity(value, Cursor(0), entity, report)
         if(result == null){
@@ -393,8 +394,8 @@ object EinSerializer:Serializer<String>{
      * get()으로 값을 가져올 수 없음
      */
     private val entry:Map.Entry<String,Field<*>> = object:Map.Entry<String,Field<*>>{
-        override val key:String get() = throw Error(Data.ERROR.encode_error,"")
-        override val value:Field<*> get() = throw Error(Data.ERROR.encode_error,"")
+        override val key:String get() = throw E(Data.ERROR.encode_error,"")
+        override val value:Field<*> get() = throw E(Data.ERROR.encode_error,"")
     }
 
     /**
@@ -420,7 +421,7 @@ object EinSerializer:Serializer<String>{
             val field:Field<*> = fields[k] ?: return report(Data.ERROR.encode_error,"no field ${type.simpleName}.${k}")
 
             //1단계 키에 해당되는 store의 tasks를 가져와서
-            val include = Store.getInclude(entity,k)
+            val include = TaskStore.include(entity,k)
             val value = when{
                 //include === Field.isOptional 일때 -> _values 에 값이 있으면 포함 없으면 포함 안함
                 include === Field.isOptional-> v ?: optionalNullValue
@@ -490,7 +491,7 @@ object EinSerializer:Serializer<String>{
                     val v = decode(it.value, serial, cursor, report) ?: return report(Data.ERROR.decode_error,"no value:${type.simpleName}:${it.key}")
                     try{
                         entity.setRawValue(it.key, v)
-                    }catch(e:Error){
+                    }catch(e: E){
                         return report(e.id, e.message, *e.result)
                     }
                 }

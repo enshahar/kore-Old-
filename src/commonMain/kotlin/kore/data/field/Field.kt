@@ -1,11 +1,14 @@
 package ein2b.core.entity.field
 
 import ein2b.core.date.eUtc
-import ein2b.core.entity.Error
+import kore.error.E
 import kore.data.Data
 import ein2b.core.entity.indexer.Indexer
 import ein2b.core.entity.task.*
 import ein2b.core.validation.eVali
+import kore.data.task.DefaultFactoryTask
+import kore.data.task.DefaultTask
+import kore.data.task.Tasks
 import kotlin.jvm.JvmInline
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadWriteProperty
@@ -46,7 +49,7 @@ abstract class Field<VALUE:Any>{
     inline fun Data.default(value:VALUE){
         val result = when(value){
             is Number, is String, is Boolean, is Enum<*>->value
-            else->throw Error(
+            else->throw E(
                 Data.ERROR.default_invalidImmutable,
                 "value is not immutable. $value",
                 value

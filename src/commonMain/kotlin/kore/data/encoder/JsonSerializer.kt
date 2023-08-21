@@ -4,25 +4,26 @@ import ein2b.core.date.eUtc
 import ein2b.core.entity.*
 import ein2b.core.entity.field.*
 import ein2b.core.entity.indexer.Indexer
-import ein2b.core.entity.task.Store
+import kore.data.task.TaskStore
 import kore.data.Data
 import kore.data.eSlowEntity
+import kore.error.E
 import kotlin.reflect.KClass
 
-fun Data.serializeJson(block:((Error) -> Unit)? = null):String? = JsonSerializer.serialize(this, block)
-fun <T: Data> T.unserializeJson(serial:String, block:((Error) -> Unit)? = null):T? = JsonSerializer.unserialize(this, serial, block)
-fun eSlowEntity.serializeJson(block:((Error) -> Unit)? = null):String? = JsonSerializer.serialize(this, block)
-fun <T: eSlowEntity> T.unserializeJson(serial:String, block:((Error) -> Unit)? = null):T? = JsonSerializer.unserialize(this, serial, block)
+fun Data.serializeJson(block:((E) -> Unit)? = null):String? = JsonSerializer.serialize(this, block)
+fun <T: Data> T.unserializeJson(serial:String, block:((E) -> Unit)? = null):T? = JsonSerializer.unserialize(this, serial, block)
+fun eSlowEntity.serializeJson(block:((E) -> Unit)? = null):String? = JsonSerializer.serialize(this, block)
+fun <T: eSlowEntity> T.unserializeJson(serial:String, block:((E) -> Unit)? = null):T? = JsonSerializer.unserialize(this, serial, block)
 
 @Suppress("NOTHING_TO_INLINE")
 object JsonSerializer:Serializer<String>{
-    override fun serialize(entity: Data, block:((Error)->Unit)?):String?{
+    override fun serialize(entity: Data, block:((E)->Unit)?):String?{
         val report = Report()
         val result = encodeEntity(entity, report)
         block?.also{ if(report.id != null) report.report{ err-> it(err) } }
         return result
     }
-    override fun <ENTITY: Data> unserialize(entity:ENTITY, value:String, block:((Error)->Unit)?):ENTITY?{
+    override fun <ENTITY: Data> unserialize(entity:ENTITY, value:String, block:((E)->Unit)?):ENTITY?{
         val report = Report()
         val result = decodeEntity(value, Cursor(0), entity, report)
         block?.also{ if(report.id != null) report.report{ err-> it(err) } }
@@ -421,7 +422,7 @@ object JsonSerializer:Serializer<String>{
             //if(k == "data") log("values::${k}::${field::class}:$v")
 
             //1단계 키에 해당되는 store의 tasks를 가져와서
-            val include = Store.getInclude(entity,k)
+            val include = TaskStore.include(entity,k)
             val value = when{
                 //include === Field.isOptional 일때 -> _values 에 값이 있으면 포함 없으면 포함 안함
                 include === Field.isOptional-> v
@@ -536,22 +537,22 @@ object JsonSerializer:Serializer<String>{
     }
 
     private val entry:Map.Entry<String, Field<*>> = object:Map.Entry<String, Field<*>>{
-        override val key:String get() = throw Error(Data.ERROR.encode_error,"")
-        override val value:Field<*> get() = throw Error(Data.ERROR.encode_error,"")
+        override val key:String get() = throw E(Data.ERROR.encode_error,"")
+        override val value:Field<*> get() = throw E(Data.ERROR.encode_error,"")
     }
 
     private inline fun openObject(serial:String,cursor:Cursor):Boolean{
         return if(skipSep('{', serial, cursor)) true
-        else throw Error(Data.ERROR.decode_error,"invalid object,cursor:${cursor.v},serial[cursor.v] = ${serial.substring(cursor.v)},serial:$serial")
+        else throw E(Data.ERROR.decode_error,"invalid object,cursor:${cursor.v},serial[cursor.v] = ${serial.substring(cursor.v)},serial:$serial")
     }
     private inline fun openList(serial:String,cursor:Cursor):Boolean{
         return if(skipSep('[', serial, cursor)) true
-        else throw Error(Data.ERROR.decode_error,"invalid list,cursor:${cursor.v},serial:$serial")
+        else throw E(Data.ERROR.decode_error,"invalid list,cursor:${cursor.v},serial:$serial")
     }
     private inline fun key(serial:String, cursor:Cursor, report:Report):String?{
         val key = decodeStringValue(serial,cursor,report) ?:return null
         skipSpace(serial, cursor)
-        if(serial[cursor.v++] != ':') throw Error(Data.ERROR.decode_error,"invalid key form,key:${key},cursor:${cursor.v-1},serial:$serial")
+        if(serial[cursor.v++] != ':') throw E(Data.ERROR.decode_error,"invalid key form,key:${key},cursor:${cursor.v-1},serial:$serial")
         return key
     }
     private inline fun <ENTITY: Data> decodeEntity(serial:String, cursor:Cursor, entity:ENTITY, report:Report):ENTITY?{
@@ -568,7 +569,7 @@ object JsonSerializer:Serializer<String>{
             if(Indexer.getOrNull(type,key) == null){
                 try{
                     passValue(key, serial, cursor, report)
-                }catch(e:Error){
+                }catch(e: E){
                     return report(e.id, e.message, *e.result)
                 }
             }else{
@@ -576,7 +577,7 @@ object JsonSerializer:Serializer<String>{
                 val v = decoders[field.value::class]?.invoke(field.value,serial,cursor,report) ?:return report(Data.ERROR.decode_error,"no value:${type.simpleName}:${key}")
                 try{
                     entity.setRawValue(field.key, v)
-                }catch(e:Error){
+                }catch(e: E){
                     return report(e.id, e.message, *e.result)
                 }
             }
@@ -667,7 +668,7 @@ object JsonSerializer:Serializer<String>{
             return factoryEntity
         }
 
-        return entity?:throw Error(Data.ERROR.decode_error,"Union Decode Error")
+        return entity?:throw E(Data.ERROR.decode_error,"Union Decode Error")
     }
 
     private inline fun skipSpace(serial:String, cursor:Cursor){

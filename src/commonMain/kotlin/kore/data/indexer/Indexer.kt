@@ -1,18 +1,17 @@
-package ein2b.core.entity.indexer
+package kore.data.indexer
 
-import ein2b.core.entity.Error
 import kore.data.Data
+import kore.r.R
 import kotlin.reflect.KClass
 
+@Suppress("NOTHING_TO_INLINE")
 object Indexer{
-    private val indexes:HashMap<KClass<out Data>, HashMap<String, Int>> = hashMapOf()
-
-    fun set(entity: Data, name:String, i: Int){
-        val index = entity::class.let{type->
+    @PublishedApi internal val indexes:HashMap<KClass<out Data>, HashMap<String, Int>> = hashMapOf()
+    fun set(data: Data, name:String, i: Int){
+        val index = data::class.let{type->
             indexes[type] ?: hashMapOf<String, Int>().also{ indexes[type] = it }
         }
         if(name !in index) index[name] = i
     }
-    fun get(entity: KClass<out Data>, name:String):Int = indexes[entity]?.get(name) ?: throw Error(Data.ERROR.index_error, "no index:${entity.simpleName}.$name")
-    fun getOrNull(entity: KClass<out Data>, name:String):Int? = indexes[entity]?.get(name)
+    inline fun get(data: KClass<out Data>, name:String): R<Int> = R(indexes[data]?.get(name) ?: Data.NoIndex(name))
 }

@@ -10,10 +10,14 @@ import kotlin.jvm.JvmInline
 value class R<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi internal val value:Any){
     companion object{
         /** 특정 블록 실행을 통한 R생성 */
-        inline fun <VALUE:Any>catch(block:()->VALUE):R<VALUE> = try {
+        inline operator fun <VALUE:Any>invoke(block:()->VALUE):R<VALUE> = try {
             ok(block())
         }catch(e:Throwable){
             fail(e)
+        }
+        inline operator fun <VALUE:Any>invoke(value:Any):R<VALUE> = when(value){
+            is Throwable -> fail(value)
+            else -> R(value)
         }
         /** 정상인 값을 생성함 */
         inline fun <VALUE:Any>ok(value:VALUE):R<VALUE> = R(value)

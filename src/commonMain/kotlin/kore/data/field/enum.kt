@@ -1,7 +1,7 @@
 package ein2b.core.entity.field
 
 import kore.data.Data
-import ein2b.core.entity.task.DefaultFactoryTask
+import kore.data.task.DefaultFactoryTask
 import kotlin.reflect.KClass
 
 class EnumField<ENUM: Enum<ENUM>>(val enums:Array<ENUM>): Field<ENUM>(){

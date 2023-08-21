@@ -1,7 +1,6 @@
 package ein2b.core.entity.field
 
-import ein2b.core.entity.task.ConvertTask
-import ein2b.core.entity.task.Tasks
+import kore.data.task.Tasks
 
 class FieldSet(private val tasks: Tasks){
     fun add(task: ConvertTask){

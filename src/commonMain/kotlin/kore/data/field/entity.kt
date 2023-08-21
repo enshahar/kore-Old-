@@ -2,7 +2,7 @@ package ein2b.core.entity.field
 
 import kore.data.Data
 import kore.data.eSlowEntity
-import ein2b.core.entity.task.DefaultFactoryTask
+import kore.data.task.DefaultFactoryTask
 import kotlin.reflect.KClass
 
 open class EntityField<T: Data>(val factory:()->T): Field<T>(){

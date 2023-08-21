@@ -1,5 +1,7 @@
 package ein2b.core.entity
 
+import kore.error.E
+
 class Report{
     var id:Any? = null
     var message:String? = null
@@ -18,7 +20,7 @@ class Report{
         return null
     }
 
-    fun report(block:((Error)->Unit)){
-        block.invoke(Error(id!!,message!!,*result!!))
+    fun report(block:((E)->Unit)){
+        block.invoke(E(id!!,message!!,*result!!))
     }
 }

@@ -2,7 +2,7 @@ package ein2b.core.entity.field
 
 import ein2b.core.entity.Union
 import kore.data.Data
-import ein2b.core.entity.task.DefaultFactoryTask
+import kore.data.task.DefaultFactoryTask
 import kotlin.reflect.KClass
 
 class UnionField<T: Data>(val union: Union<T>): Field<T>(){

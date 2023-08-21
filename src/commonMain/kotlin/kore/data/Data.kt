@@ -1,109 +1,81 @@
 package kore.data
 
-import ein2b.core.date.eUtc
-import ein2b.core.entity.Error
-import ein2b.core.entity.Report
+import kore.error.E
 import ein2b.core.entity.Union
-import ein2b.core.entity.encoder.serializeJson
-import ein2b.core.entity.encoder.serializeEin
-import ein2b.core.entity.encoder.unserializeJson
-import ein2b.core.entity.encoder.unserializeEin
 import ein2b.core.entity.field.*
-import ein2b.core.entity.indexer.Indexer
-import ein2b.core.entity.task.DefaultTask
-import ein2b.core.entity.task.Store
-import ein2b.core.entity.task.Tasks
-import ein2b.core.log.log
+import kore.data.task.TaskStore
+import kore.data.task.Tasks
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 abstract class Data:ReadWriteProperty<Data, Any>{
-    enum class ERROR{
-        getValue_notInitialized,
-        getValue_taskFail,
-        setValue_ruleFail,
-        setValue_taskFail,
-        default_invalidImmutable,
-        encode_error,
-        decode_error,
-        index_error,
-    }
+    class NoIndex(name:String):E(name)
+//  class GetValue_notInitialized():E()
+//        getValue_taskFail,
+//        setValue_ruleFail,
+//        setValue_taskFail,
+//        default_invalidImmutable,
+//        encode_error,
+//        decode_error,
+//        index_error,
+//    }
     class Immutable<T:Any>(val value:T)
     companion object{
-        inline fun <T: Data>parse(entity:T, json:String, report: Report = Report(), error:((Report)->Unit) = {}):T?{
-            val r = entity.unserializeJson(json){
-                report.id = it.id
-                report.message = it.message
-                report.result = it.result
-            }
-            return if(r != null && report.id == null) r
-            else{
-                error.invoke(report)
-                null
-            }
+//        inline fun <T: Data>parse(entity:T, json:String, report: Report = Report(), error:((Report)->Unit) = {}):T?{
+//            val r = entity.unserializeJson(json){
+//                report.id = it.id
+//                report.message = it.message
+//                report.result = it.result
+//            }
+//            return if(r != null && report.id == null) r
+//            else{
+//                error.invoke(report)
+//                null
+//            }
+//        }
+//        inline fun <T: Data>parseEin(entity:T, str:String, report: Report = Report(), error:((Report)->Unit) = {}):T?{
+//            val r = entity.unserializeEin(str){
+//                report.id = it.id
+//                report.message = it.message
+//                report.result = it.result
+//            }
+//            return if(r != null && report.id == null) r
+//            else{
+//                error.invoke(report)
+//                null
+//            }
+//        }
+        object Default{
+            val stringList:()->MutableList<String> = {arrayListOf()}
+            val stringMap:()->HashMap<String,String> = {hashMapOf()}
         }
-        inline fun <T: Data>parseEin(entity:T, str:String, report: Report = Report(), error:((Report)->Unit) = {}):T?{
-            val r = entity.unserializeEin(str){
-                report.id = it.id
-                report.message = it.message
-                report.result = it.result
-            }
-            return if(r != null && report.id == null) r
-            else{
-                error.invoke(report)
-                null
-            }
-        }
-        val defaultStringMap:()->HashMap<String,String> = { hashMapOf() }
-        val defaultIntList:()->MutableList<Int> = { mutableListOf() }
-        val defaultStringList:()->MutableList<String> = { mutableListOf() }
-        val defaultUtc:()->eUtc = { eUtc.default() }
     }
-    var _index = 0
-        internal set
-    /**
-     * 자바스크립트에서 set일때랑 get일때 다른 hashCode가 들어와서 프로포티 이름으로 했음 */
-    var _values:MutableMap<String, Any?>? = null
-        internal set
 
-    // TODO: 스토어 전체 이동 전에 일단 디폴트만 이동함
-    var _defaultMap: MutableMap<Int,DefaultTask<*>>? = null
+    /** lazy 필드 매칭용 인덱서 */
+    @PublishedApi internal var _index = 0
+    /** 자바스크립트에서 set일때랑 get일때 다른 hashCode가 들어와서 프로포티 이름으로 했음 */
+    @PublishedApi internal var _values:MutableMap<String, Any?>? = null
 
-    open val fields:HashMap<String, Field<*>>
-        get() = Field[this::class] ?:
-            hashMapOf<String, Field<*>>().also{
-                Field[this::class] = it
-            }
-
-    /**
-     * 자바스크립트에서 set일때랑 get일때 다른 hashCode가 들어와서 프로포티 이름으로 했음
-     * 외부에 제공하기 위해 용도 */
     val props:MutableMap<String, Any?> get() = _values ?:hashMapOf()
-    fun stringify() = serializeJson{ log("stringify error:${it.id}:${it.message}") } ?: throw Throwable("JSON stringify error")
-    fun stringifyEin() = serializeEin{ log("stringify error:${it.id}:${it.message}") } ?: throw Throwable("Ein stringify error")
     override fun getValue(thisRef: Data, property:KProperty<*>):Any{
         val name = property.name
         var result:Any = _values!![name] ?:
         run{
-            /*Store.getDefault<Any>(this, name)?.value?.let{
+            TaskStore.default<Any>(this, name)?.value?.let{
                 setValue(thisRef, property, it)
                 _values!![property.name]
-            }*/
-            _defaultMap?.get(Indexer.get(thisRef::class,name))?.value?.let {
-                setValue(thisRef, property, it)
-                _values!![name]
             }
         } ?:
-        throw Error(
+        throw E(
             ERROR.getValue_notInitialized,
             "not initialized. ${this::class.simpleName}.${name}"
         )
-        Store.getGetTask(this, name)?.let{ list->
+        TaskStore.getTask(this, name)?.let{ list->
             list.forEach{task->
                 task(result)?.let{
                     result = it
-                } ?:throw Error(
+                } ?:throw E(
                     ERROR.getValue_taskFail,
                     "get task error. ${this::class.simpleName}.${name} task:0.${task::class.simpleName} value:1.$result )",
                     task, result
@@ -118,10 +90,10 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     }
     fun setRawValue(name:String, value:Any){
         var newValue:Any = value
-        Store.getVali(this, name)?.let{
+        TaskStore.getVali(this, name)?.let{
             val (isOk, result) = it.check(newValue)
             if(!isOk){
-                throw Error(
+                throw E(
                     ERROR.setValue_ruleFail,
                     "rule fail. ${this::class.simpleName}.${name} value:0.$newValue, result:1.$result",
                     newValue, result
@@ -129,11 +101,11 @@ abstract class Data:ReadWriteProperty<Data, Any>{
             }
             newValue = result
         }
-        Store.getSetTask(this, name)?.let{ list->
+        TaskStore.setTask(this, name)?.let{ list->
             list.forEach{task->
                 task(newValue)?.let{result ->
                     newValue = result
-                } ?:throw Error(
+                } ?:throw E(
                     ERROR.setValue_taskFail,
                     "set task error. ${this::class.simpleName}.${name} task:0.${task::class.simpleName} value:1.$newValue",
                     task, newValue
@@ -177,10 +149,10 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     val stringMap get() = stringMap()
 
     var _lastIndex = -1
-    var _task:Tasks? = null
+    var _task: Tasks? = null
     @Suppress("NOTHING_TO_INLINE")
     inline fun <FIELD:Field<*>> FIELD.firstTask():FIELD?{
-        return Store.getFirstTasks(this@Data)?.let{
+        return TaskStore.getFirstTasks(this@Data)?.let{
             if(_task == null || _index != _lastIndex){
                 _lastIndex = _index
                 _task = it
