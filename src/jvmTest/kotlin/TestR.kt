@@ -5,23 +5,22 @@ import kotlin.test.assertEquals
 class TestR {
     @Test
     fun test1(){
-        runCatching {  }
-        val r1 = R.ok(5)
+        val r1 = R(5)
         assertEquals(r1(), 5)
-        val r2 = R.ok { 3 }
+        val r2 = R { 3 }
         assertEquals(r2(), 3)
-        val r3 = R.fail<Int>(Throwable("test"))
+        val r3 = R<Int>(Throwable("test"))
         assertEquals(r3(), null)
         assertEquals(r3{4}, 4)
     }
     @Test
     fun test2(){
         var count = 0
-        val r1 = R.ok(5)
+        val r1 = R(5)
         val r2 = r1.map{it*3}.map{it+3}
         assertEquals(r2(), 18)
         assertEquals(r1.map{"a"}(), "a")
-        val r3 = R.ok{4}
+        val r3 = R{4}
         val r4 = r3.map {
             count++
             it * 2
@@ -38,13 +37,13 @@ class TestR {
         }
         assertEquals(r5{ 10 }, 10)
         assertEquals(r5(), null)
-        val r6 = R.ok(3)
+        val r6 = R(3)
         assertEquals(r6{7}, 3)
     }
     @Test
     fun test3(){
         var lazyCount = 0
-        val r1 = R.ok(3)
+        val r1 = R(3)
         val r2 = r1.mapLazy {
             lazyCount++
             5
