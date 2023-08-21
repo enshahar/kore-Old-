@@ -92,6 +92,25 @@ abstract class Data:ReadWriteProperty<Data, Any>{
             task(acc) ?: SetTaskFail(acc).terminate()
         } ?: newValue
     }
+    @PublishedApi internal var _lastIndex = -1
+    @PublishedApi internal var _task: Task? = null
+    @Suppress("NOTHING_TO_INLINE")
+    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD?{
+        val slowData = this as? SlowData
+        val task = if(slowData != null){
+            if(_index in slowData._tasks) null
+            else Task().also{slowData._tasks[_index] = it}
+        }else TaskStore.firstTask(this@Data)
+        return task?.let{
+            if(_task == null || _index != _lastIndex){
+                _lastIndex = _index
+                _task = it
+            }
+            this
+        } ?: _task?.let{
+            this
+        }
+    }
     val int get() = int()
     val uint get() = uint()
     val long get() = long()
@@ -126,20 +145,7 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     val booleanMap get() = booleanMap()
     val stringMap get() = stringMap()
 
-    @PublishedApi internal var _lastIndex = -1
-    @PublishedApi internal var _task: Task? = null
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD?{
-        return TaskStore.firstTask(this@Data)?.let{
-            if(_task == null || _index != _lastIndex){
-                _lastIndex = _index
-                _task = it
-            }
-            this
-        } ?: _task?.let{
-            this
-        }
-    }
+
     inline fun int(block: IntField.()->Unit = {}):Prop<Int>{
         IntField.firstTask()?.block()
         return IntField.delegator
