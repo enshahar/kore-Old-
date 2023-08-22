@@ -45,30 +45,27 @@ abstract class Field<VALUE:Any>{
         data as ReadWriteProperty<Data, VALUE>
     }
     inline fun Data.default(value:VALUE){
-        ((this@default as? SlowData)?._tasks?.getOrPut(_index){Task()} ?: _task)?.default = when(value){
+        _task?.default = when(value){
             is Number, is String, is Boolean, is Enum<*>->value
             else->Data.DefaultNotValue(value).terminate()
         }
     }
     inline fun Data.default(value: Data.Immutable<VALUE>){
-        ((this@default as? SlowData)?._tasks?.getOrPut(_index){Task()} ?: _task)?.default = value.value
+        _task?.default = value.value
     }
     @JvmInline
     value class Encoding(val task: Task?){
-        @Suppress("NOTHING_TO_INLINE")
         inline fun isExcluded(){
             task?.run{ include = isNotInclude }
         }
-        @Suppress("NOTHING_TO_INLINE")
         inline fun isOptional(){
             task?.run{ include = isOptional }
         }
-        @Suppress("NOTHING_TO_INLINE")
         inline fun setResolver(noinline block:()->Boolean){
             task?.run{ include = block }
         }
     }
-    inline val Data.encoding: Encoding get() = Encoding((this as? SlowData)?._tasks?.getOrPut(_index){Task()} ?: _task)
+    inline val Data.encoding: Encoding get() = Encoding(_task)
 //    inline fun Data.validator(vali:eVali){
 //        _task?.run{ this.vali = vali }
 //    }
@@ -90,173 +87,112 @@ object FloatField: Field<Float>()
 object DoubleField: Field<Double>()
 object BooleanField: Field<Boolean>()
 object StringField: Field<String>()
-object UtcField: Field<eUtc>() {
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->eUtc){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
-    }
-}
+//object UtcField: Field<eUtc>() {
+//    @Suppress("NOTHING_TO_INLINE")
+//    inline fun Data.default(noinline factory:(Data)->eUtc){
+//        _defaultMap = _defaultMap ?: hashMapOf()
+//        _defaultMap!![_index] = DefaultFactoryTask(factory)
+//    }
+//}
 
 object IntListField: Field<MutableList<Int>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<Int>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<Int>){
+        _task?.default = factory
     }
 }
 object UIntListField: Field<MutableList<UInt>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<UInt>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<UInt>){
+        _task?.default = factory
     }
 }
 object LongListField: Field<MutableList<Long>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<Long>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<Long>){
+        _task?.default = factory
     }
 }
 object ULongListField: Field<MutableList<ULong>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<ULong>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<ULong>){
+        _task?.default = factory
     }
 }
 object ShortListField: Field<MutableList<Short>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<Short>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<Short>){
+        _task?.default = factory
     }
 }
 object UShortListField: Field<MutableList<UShort>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<UShort>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<UShort>){
+        _task?.default = factory
     }
 }
 object FloatListField: Field<MutableList<Float>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<Float>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<Float>){
+        _task?.default = factory
     }
 }
 object DoubleListField: Field<MutableList<Double>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<Double>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<Double>){
+        _task?.default = factory
     }
 }
 object BooleanListField: Field<MutableList<Boolean>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<Boolean>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<Boolean>){
+        _task?.default = factory
     }
 }
 object StringListField: Field<MutableList<String>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<String>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<String>){
+        _task?.default = factory
     }
 }
 
 object IntMapField: Field<HashMap<String, Int>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, Int>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, Int>){
+        _task?.default = factory
     }
 }
 object UIntMapField: Field<HashMap<String, UInt>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, UInt>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, UInt>){
+        _task?.default = factory
     }
 }
 object LongMapField: Field<HashMap<String, Long>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, Long>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, Long>){
+        _task?.default = factory
     }
 }
 object ULongMapField: Field<HashMap<String, ULong>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, ULong>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, ULong>){
+        _task?.default = factory
     }
 }
 object ShortMapField: Field<HashMap<String, Short>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, Short>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, Short>){
+        _task?.default = factory
     }
 }
 object UShortMapField: Field<HashMap<String, UShort>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, UShort>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, UShort>){
+        _task?.default = factory
     }
 }
 object FloatMapField: Field<HashMap<String, Float>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, Float>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, Float>){
+        _task?.default = factory
     }
 }
 object DoubleMapField: Field<HashMap<String, Double>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, Double>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, Double>){
+        _task?.default = factory
     }
 }
 object BooleanMapField: Field<HashMap<String, Boolean>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, Boolean>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, Boolean>){
+        _task?.default = factory
     }
 }
 object StringMapField: Field<HashMap<String, String>>(){
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String, String>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String, String>){
+        _task?.default = factory
     }
 }
