@@ -69,14 +69,17 @@ abstract class Field<VALUE:Any>{
 //    inline fun Data.validator(vali:eVali){
 //        _task?.run{ this.vali = vali }
 //    }
-    inline fun Data.get(block: FieldGet.()->Unit){
-        _task?.run{ FieldGet(this).block() }
+    inline fun Data.get(noinline block:(Any)->Any?){
+        _task?.let{ task ->
+            (task.getTasks ?: arrayListOf<(Any)->Any?>().also{task.getTasks = it}).add(block)
+        }
     }
-    inline fun Data.set(block: FieldSet.()->Unit){
-        _task?.run{ FieldSet(this).block() }
+    inline fun Data.set(noinline block:(Any)->Any?){
+        _task?.let{ task ->
+            (task.setTasks ?: arrayListOf<(Any)->Any?>().also{task.setTasks = it}).add(block)
+        }
     }
 }
-
 object IntField: Field<Int>()
 object UIntField: Field<UInt>()
 object LongField: Field<Long>()

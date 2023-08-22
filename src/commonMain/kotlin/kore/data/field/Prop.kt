@@ -1,4 +1,4 @@
-package ein2b.core.entity.field
+package kore.data.field
 
 import kore.data.Data
 import kotlin.properties.PropertyDelegateProvider
