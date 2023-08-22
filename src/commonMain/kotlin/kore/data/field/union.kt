@@ -1,47 +1,39 @@
-package ein2b.core.entity.field
+@file:Suppress("UNCHECKED_CAST", "NOTHING_TO_INLINE")
 
-import kore.data.Union
+package kore.data.field
+
 import kore.data.Data
-import kore.data.field.Field
-import kore.data.task.DefaultFactoryTask
+import kore.data.Union
 import kotlin.reflect.KClass
 
-class UnionField<T: Data>(val union: Union<T>): Field<T>(){
+
+class UnionField<DATA: Data>(val union: Union<DATA>): Field<DATA>(){
     companion object{
-        val fields:HashMap<KClass<out Data>, UnionField<out Data>> = hashMapOf()
-        inline operator fun <reified ENTITY: Data> get(union: Union<ENTITY>): UnionField<ENTITY> {
-            @Suppress("UNCHECKED_CAST")
-            return (fields[ENTITY::class] ?: UnionField(union).also { fields[ENTITY::class] = it }) as UnionField<ENTITY>
+        @PublishedApi internal val fields:HashMap<KClass<out Data>, UnionField<out Data>> = hashMapOf()
+        inline operator fun <reified DATA: Data> get(union: Union<DATA>): UnionField<DATA> {
+            return fields.getOrPut(DATA::class){UnionField(union)} as UnionField<DATA>
         }
     }
 }
-class UnionListField<T: Data>(val union: Union<T>): Field<MutableList<T>>(){
+class UnionListField<DATA: Data>(val union: Union<DATA>): Field<MutableList<DATA>>(){
     companion object{
-        val fields:HashMap<KClass<out Data>, UnionListField<out Data>> = hashMapOf()
-        inline operator fun <reified ENTITY: Data> get(union: Union<ENTITY>): UnionListField<ENTITY> {
-            @Suppress("UNCHECKED_CAST")
-            return (fields[ENTITY::class] ?: UnionListField(union).also { fields[ENTITY::class] = it }) as UnionListField<ENTITY>
+        @PublishedApi internal val fields:HashMap<KClass<out Data>, UnionListField<out Data>> = hashMapOf()
+        inline operator fun <reified DATA: Data> get(union: Union<DATA>): UnionListField<DATA> {
+            return fields.getOrPut(DATA::class){UnionListField(union)} as UnionListField<DATA>
         }
     }
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->List<T>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->List<DATA>){
+        _task?.default = factory
     }
 }
-class UnionMapField<T: Data>(val union: Union<T>): Field<MutableMap<String, T>>(){
+class UnionMapField<DATA: Data>(val union: Union<DATA>): Field<MutableMap<String, DATA>>(){
     companion object{
-        val fields:HashMap<KClass<out Data>, UnionMapField<out Data>> = hashMapOf()
-        inline operator fun <reified ENTITY: Data> get(union: Union<ENTITY>): UnionMapField<ENTITY> {
-            @Suppress("UNCHECKED_CAST")
-            return (fields[ENTITY::class] ?: UnionMapField(union).also { fields[ENTITY::class] = it }) as UnionMapField<ENTITY>
+        @PublishedApi internal val fields:HashMap<KClass<out Data>, UnionMapField<out Data>> = hashMapOf()
+        inline operator fun <reified DATA: Data> get(union: Union<DATA>): UnionMapField<DATA> {
+            return fields.getOrPut(DATA::class){UnionMapField(union)} as UnionMapField<DATA>
         }
     }
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun Data.default(noinline factory:()->Map<String,T>){
-        //_task?.default = DefaultFactoryTask(factory)
-        _defaultMap = _defaultMap ?: hashMapOf()
-        _defaultMap!![_index] = DefaultFactoryTask(factory)
+    inline fun Data.default(noinline factory:(Data)->Map<String,DATA>){
+        _task?.default = factory
     }
 }

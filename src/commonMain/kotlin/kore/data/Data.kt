@@ -1,10 +1,10 @@
-@file:Suppress("NOTHING_TO_INLINE")
+@file:Suppress("NOTHING_TO_INLINE", "PropertyName")
 
 package kore.data
 
 import kore.error.E
-import ein2b.core.entity.field.*
 import kore.data.field.*
+import kore.data.indexer.Indexer
 import kore.data.task.TaskStore
 import kore.data.task.Task
 import kotlin.jvm.JvmInline
@@ -50,10 +50,6 @@ abstract class Data:ReadWriteProperty<Data, Any>{
 //                null
 //            }
 //        }
-        object Default{
-            val stringList:()->MutableList<String> = {arrayListOf()}
-            val stringMap:()->HashMap<String,String> = {hashMapOf()}
-        }
     }
 
     /** lazy 필드 매칭용 인덱서 */
@@ -63,19 +59,25 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     /** 외부에 표출되는 저장소 */
     val props:MutableMap<String, Any> get() = _values ?: hashMapOf<String, Any>().also{ _values = it }
     override fun getValue(thisRef: Data, property:KProperty<*>):Any{
+        val type: KClass<out Data> = this::class
         val name: String = property.name
-        val result:Any = _values!![name] ?: TaskStore.default(this, name)?.let{
-            setValue(thisRef, property, it)
-            _values!![property.name]
+        val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
+        val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
+        val result:Any = _values!![name] ?: task?.default?.let{
+            setValue(thisRef, property, (it as? Function1<Data, Any>)?.invoke(this) ?: it)
+            _values!![name]
         } ?: NotInitialized(name).terminate()
-        return TaskStore.getTask(this::class, name)?.fold(result){acc, task->
-            task(acc) ?: GetTaskFail(acc).terminate()
+        return task?.getTasks?.fold(result){acc, getTask->
+            getTask(this, acc) ?: GetTaskFail(acc).terminate()
         } ?: result
     }
     override fun setValue(thisRef: Data, property:KProperty<*>, value:Any){
         setRawValue(property.name, value)
     }
     fun setRawValue(name:String, value:Any){
+        val type: KClass<out Data> = this::class
+        val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
+        val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
         var newValue:Any = value
 //        TaskStore.getVali(this, name)?.let{
 //            val (isOk, result) = it.check(newValue)
@@ -88,8 +90,8 @@ abstract class Data:ReadWriteProperty<Data, Any>{
 //            }
 //            newValue = result
 //        }
-        _values!![name] = TaskStore.setTask(this::class, name)?.fold(newValue){acc, task->
-            task(acc) ?: SetTaskFail(acc).terminate()
+        _values!![name] = task?.setTasks?.fold(newValue){acc, setTask->
+            setTask(this, acc) ?: SetTaskFail(acc).terminate()
         } ?: newValue
     }
     @PublishedApi internal var _lastIndex = -1
@@ -98,8 +100,7 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD? = (
         /** slow라면 인스턴스의 _tasks에서 아니라면 TaskStore에서 Task에 대한 최초 생성 판정을 함*/
         (this as? SlowData)?.let{slow->
-            if(_index in slow._tasks) null
-            else Task().also{slow._tasks[_index] = it}
+            if(_index in slow._tasks) null else slow._tasks.getOrPut(_index){ Task() }
         } ?: TaskStore.firstTask(this@Data)
     )?.let{
         /** 최초 생성된 Task라면 _task에 캐쉬를 잡고 필드 반환*/
@@ -112,39 +113,39 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         /** 캐쉬에 잡힌 _task가 있으면 그걸 반환*/
         this
     }
-    val int get() = int()
-    val uint get() = uint()
-    val long get() = long()
-    val ulong get() = ulong()
-    val short get() = short()
-    val ushort get() = ushort()
-    val float get() = float()
-    val double get() = double()
-    val boolean get() = boolean()
-    val string get() = string()
+    inline val int get() = int()
+    inline val uint get() = uint()
+    inline val long get() = long()
+    inline val ulong get() = ulong()
+    inline val short get() = short()
+    inline val ushort get() = ushort()
+    inline val float get() = float()
+    inline val double get() = double()
+    inline val boolean get() = boolean()
+    inline val string get() = string()
 //    val utc get() = utc()
 
-    val intList get() = intList()
-    val uintList get() = uintList()
-    val longList get() = longList()
-    val ulongList get() = ulongList()
-    val shortList get() = shortList()
-    val ushortList get() = ushortList()
-    val floatList get() = floatList()
-    val doubleList get() = doubleList()
-    val booleanList get() = booleanList()
-    val stringList get() = stringList()
+    inline val intList get() = intList()
+    inline val uintList get() = uintList()
+    inline val longList get() = longList()
+    inline val ulongList get() = ulongList()
+    inline val shortList get() = shortList()
+    inline val ushortList get() = ushortList()
+    inline val floatList get() = floatList()
+    inline val doubleList get() = doubleList()
+    inline val booleanList get() = booleanList()
+    inline val stringList get() = stringList()
 
-    val intMap get() = intMap()
-    val uintMap get() = uintMap()
-    val longMap get() = longMap()
-    val ulongMap get() = ulongMap()
-    val shortMap get() = shortMap()
-    val ushortMap get() = ushortMap()
-    val floatMap get() = floatMap()
-    val doubleMap get() = doubleMap()
-    val booleanMap get() = booleanMap()
-    val stringMap get() = stringMap()
+    inline val intMap get() = intMap()
+    inline val uintMap get() = uintMap()
+    inline val longMap get() = longMap()
+    inline val ulongMap get() = ulongMap()
+    inline val shortMap get() = shortMap()
+    inline val ushortMap get() = ushortMap()
+    inline val floatMap get() = floatMap()
+    inline val doubleMap get() = doubleMap()
+    inline val booleanMap get() = booleanMap()
+    inline val stringMap get() = stringMap()
 
 
     inline fun int(block: IntField.()->Unit = {}): Prop<Int> {
@@ -272,46 +273,42 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         return StringMapField.delegator
     }
     val enums = hashMapOf<KClass<*>, Array<*>>()
-    inline fun <reified ENUM:Enum<ENUM>> enum(block:EnumField<ENUM>.()->Unit = {}): Prop<ENUM> {
+    inline fun <reified ENUM:Enum<ENUM>> enum(block: EnumField<ENUM>.()->Unit = {}): Prop<ENUM> {
         if(ENUM::class !in enums) enums[ENUM::class] = enumValues<ENUM>()
-        @Suppress("UNCHECKED_CAST")
-        EnumField.get(ENUM::class, enums[ENUM::class] as Array<ENUM>).firstTask()?.block()
-        return EnumField.get(ENUM::class, null).delegator
+        EnumField<ENUM>().firstTask()?.block()
+        return EnumField<ENUM>().delegator
     }
-    inline fun <reified ENUM:Enum<ENUM>> enumList(block:EnumListField<ENUM>.()->Unit = {}): Prop<MutableList<ENUM>> {
+    inline fun <reified ENUM:Enum<ENUM>> enumList(block: EnumListField<ENUM>.()->Unit = {}): Prop<MutableList<ENUM>> {
         if(ENUM::class !in enums) enums[ENUM::class] = enumValues<ENUM>()
-        @Suppress("UNCHECKED_CAST")
-        EnumListField.get(ENUM::class, enums[ENUM::class] as Array<ENUM>).firstTask()?.block()
-        return EnumListField.get(ENUM::class, null).delegator
+        EnumListField<ENUM>().firstTask()?.block()
+        return EnumListField<ENUM>().delegator
     }
-    inline fun <reified ENUM:Enum<ENUM>> enumMap(block:EnumMapField<ENUM>.()->Unit = {}): Prop<MutableMap<String, ENUM>> {
+    inline fun <reified ENUM:Enum<ENUM>> enumMap(block: EnumMapField<ENUM>.()->Unit = {}): Prop<MutableMap<String, ENUM>> {
         if(ENUM::class !in enums) enums[ENUM::class] = enumValues<ENUM>()
-        @Suppress("UNCHECKED_CAST")
-        EnumMapField.get(ENUM::class, enums[ENUM::class] as Array<ENUM>).firstTask()?.block()
-        return EnumMapField.get(ENUM::class, null).delegator
+        EnumMapField<ENUM>().firstTask()?.block()
+        return EnumMapField<ENUM>().delegator
     }
-    inline fun <reified ENTITY: Data> entity(noinline factory:()->ENTITY, block: EntityField<ENTITY>.()->Unit = {}): Prop<ENTITY> {
-//        println("Adding : this=${this::class.qualifiedName}")
-        EntityField[factory].firstTask()?.block()
-        return EntityField[factory].delegator
+    inline fun <reified DATA: Data> entity(noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
+        DataField[factory].firstTask()?.block()
+        return DataField[factory].delegator
     }
-    inline fun <reified ENTITY: Data> entityList(noinline factory:()->ENTITY, block: EntityListField<ENTITY>.()->Unit = {}): Prop<MutableList<ENTITY>> {
-        EntityListField[factory].firstTask()?.block()
-        return EntityListField[factory].delegator
+    inline fun <reified DATA: Data> entityList(noinline factory:()->DATA, block: DataListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
+        DataListField[factory].firstTask()?.block()
+        return DataListField[factory].delegator
     }
-    inline fun <reified ENTITY: Data> entityMap(noinline factory:()->ENTITY, block: EntityMapField<ENTITY>.()->Unit = {}): Prop<MutableMap<String, ENTITY>> {
-        EntityMapField[factory].firstTask()?.block()
-        return EntityMapField[factory].delegator
+    inline fun <reified DATA: Data> entityMap(noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
+        DataMapField[factory].firstTask()?.block()
+        return DataMapField[factory].delegator
     }
-    inline fun <reified ENTITY: Data> union(union: Union<ENTITY>, block:UnionField<ENTITY>.()->Unit = {}): Prop<ENTITY> {
+    inline fun <reified DATA: Data> union(union: Union<DATA>, block: UnionField<DATA>.()->Unit = {}): Prop<DATA> {
         UnionField[union].firstTask()?.block()
         return UnionField[union].delegator
     }
-    inline fun <reified ENTITY: Data> unionList(union: Union<ENTITY>, block:UnionListField<ENTITY>.()->Unit = {}): Prop<MutableList<ENTITY>> {
+    inline fun <reified DATA: Data> unionList(union: Union<DATA>, block: UnionListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
         UnionListField[union].firstTask()?.block()
         return UnionListField[union].delegator
     }
-    inline fun <reified ENTITY: Data> unionMap(union: Union<ENTITY>, block:UnionMapField<ENTITY>.()->Unit = {}): Prop<MutableMap<String, ENTITY>> {
+    inline fun <reified DATA: Data> unionMap(union: Union<DATA>, block: UnionMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
         UnionMapField[union].firstTask()?.block()
         return UnionMapField[union].delegator
     }
@@ -389,7 +386,7 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     inline fun intList(vararg items:Int, block: IntListField.()->Unit = {}): Prop<MutableList<Int>> {
         IntListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<Int>(items.size).also{arr->items.forEach{arr.add(it)}}}
         }
         return IntListField.delegator
     }
@@ -397,14 +394,14 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     inline fun uintList(vararg items:UInt, block: UIntListField.()->Unit = {}): Prop<MutableList<UInt>> {
         UIntListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<UInt>(items.size).also{it.addAll(items)}}
         }
         return UIntListField.delegator
     }
     inline fun longList(vararg items:Long, block: LongListField.()->Unit = {}): Prop<MutableList<Long>> {
         LongListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<Long>(items.size).also{arr->items.forEach{arr.add(it)}}}
         }
         return LongListField.delegator
     }
@@ -412,14 +409,14 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     inline fun ulongList(vararg items:ULong, block: ULongListField.()->Unit = {}): Prop<MutableList<ULong>> {
         ULongListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<ULong>(items.size).also{it.addAll(items)}}
         }
         return ULongListField.delegator
     }
     inline fun shortList(vararg items:Short, block: ShortListField.()->Unit = {}): Prop<MutableList<Short>> {
         ShortListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<Short>(items.size).also{arr->items.forEach{arr.add(it)}}}
         }
         return ShortListField.delegator
     }
@@ -427,203 +424,127 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     inline fun ushortList(vararg items:UShort, block: UShortListField.()->Unit = {}): Prop<MutableList<UShort>> {
         UShortListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<UShort>(items.size).also{it.addAll(items)}}
         }
         return UShortListField.delegator
     }
     inline fun floatList(vararg items:Float, block: FloatListField.()->Unit = {}): Prop<MutableList<Float>> {
         FloatListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<Float>(items.size).also{arr->items.forEach{arr.add(it)}}}
         }
         return FloatListField.delegator
     }
     inline fun doubleList(vararg items:Double, block: DoubleListField.()->Unit = {}): Prop<MutableList<Double>> {
         DoubleListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<Double>(items.size).also{arr->items.forEach{arr.add(it)}}}
         }
         return DoubleListField.delegator
     }
     inline fun booleanList(vararg items:Boolean, block: BooleanListField.()->Unit = {}): Prop<MutableList<Boolean>> {
         BooleanListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<Boolean>(items.size).also{arr->items.forEach{arr.add(it)}}}
         }
         return BooleanListField.delegator
     }
     inline fun stringList(vararg items:String, block: StringListField.()->Unit = {}): Prop<MutableList<String>> {
         StringListField.firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<String>(items.size).also{it.addAll(items)}}
         }
         return StringListField.delegator
     }
     inline fun intMap(vararg items:Pair<String, Int>, block: IntMapField.()->Unit = {}): Prop<HashMap<String, Int>> {
         IntMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, Int>(items.size).also{it.putAll(items)}}
         }
         return IntMapField.delegator
     }
     inline fun uintMap(vararg items:Pair<String, UInt>, block: UIntMapField.()->Unit = {}): Prop<HashMap<String, UInt>> {
         UIntMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, UInt>(items.size).also{it.putAll(items)}}
         }
         return UIntMapField.delegator
     }
     inline fun longMap(vararg items:Pair<String, Long>, block: LongMapField.()->Unit = {}): Prop<HashMap<String, Long>> {
         LongMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, Long>(items.size).also{it.putAll(items)}}
         }
         return LongMapField.delegator
     }
     inline fun ulongMap(vararg items:Pair<String, ULong>, block: ULongMapField.()->Unit = {}): Prop<HashMap<String, ULong>> {
         ULongMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, ULong>(items.size).also{it.putAll(items)}}
         }
         return ULongMapField.delegator
     }
     inline fun shortMap(vararg items:Pair<String, Short>, block: ShortMapField.()->Unit = {}): Prop<HashMap<String, Short>> {
         ShortMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, Short>(items.size).also{it.putAll(items)}}
         }
         return ShortMapField.delegator
     }
     inline fun ushortMap(vararg items:Pair<String, UShort>, block: UShortMapField.()->Unit = {}): Prop<HashMap<String, UShort>> {
         UShortMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, UShort>(items.size).also{it.putAll(items)}}
         }
         return UShortMapField.delegator
     }
     inline fun floatMap(vararg items:Pair<String, Float>, block: FloatMapField.()->Unit = {}): Prop<HashMap<String, Float>> {
         FloatMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, Float>(items.size).also{it.putAll(items)}}
         }
         return FloatMapField.delegator
     }
     inline fun doubleMap(vararg items:Pair<String, Double>, block: DoubleMapField.()->Unit = {}): Prop<HashMap<String, Double>> {
         DoubleMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, Double>(items.size).also{it.putAll(items)}}
         }
         return DoubleMapField.delegator
     }
     inline fun booleanMap(vararg items:Pair<String, Boolean>, block: BooleanMapField.()->Unit = {}): Prop<HashMap<String, Boolean>> {
         BooleanMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, Boolean>(items.size).also{it.putAll(items)}}
         }
         return BooleanMapField.delegator
     }
     inline fun stringMap(vararg items:Pair<String, String>, block: StringMapField.()->Unit = {}): Prop<HashMap<String, String>> {
         StringMapField.firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, String>(items.size).also{it.putAll(items)}}
         }
         return StringMapField.delegator
     }
-    inline fun <reified ENUM:Enum<ENUM>> enum(enums:()->Array<ENUM>, v:ENUM, block:EnumField<ENUM>.()->Unit = {}): Prop<ENUM> {
-        EnumField.get(ENUM::class, enums()).firstTask()?.apply{
+    inline fun <reified ENUM:Enum<ENUM>> enum(v:ENUM, block: EnumField<ENUM>.()->Unit = {}): Prop<ENUM> {
+        EnumField<ENUM>().firstTask()?.apply{
             block()
             default(v)
         }
-        return EnumField.get(ENUM::class, null).delegator
+        return EnumField<ENUM>().delegator
     }
-    inline fun <reified ENUM:Enum<ENUM>> enumList(enums:()->Array<ENUM>, vararg items:ENUM, block:EnumListField<ENUM>.()->Unit = {}): Prop<MutableList<ENUM>> {
-        EnumListField.get(ENUM::class, enums()).firstTask()?.apply{
+    inline fun <reified ENUM:Enum<ENUM>> enumList(vararg items:ENUM, block: EnumListField<ENUM>.()->Unit = {}): Prop<MutableList<ENUM>> {
+        EnumListField<ENUM>().firstTask()?.apply{
             block()
-            default(items::toMutableList)
+            default{ArrayList<ENUM>(items.size).also{it.addAll(items)}}
         }
-        return EnumListField.get(ENUM::class, null).delegator
+        return EnumListField<ENUM>().delegator
     }
-    inline fun <reified ENUM:Enum<ENUM>> enumMap(enums:()->Array<ENUM>, vararg items:Pair<String, ENUM>, block:EnumMapField<ENUM>.()->Unit = {}): Prop<MutableMap<String, ENUM>> {
-        EnumMapField.get(ENUM::class, enums()).firstTask()?.apply{
+    inline fun <reified ENUM:Enum<ENUM>> enumMap(vararg items:Pair<String, ENUM>, block: EnumMapField<ENUM>.()->Unit = {}): Prop<MutableMap<String, ENUM>> {
+        EnumMapField<ENUM>().firstTask()?.apply{
             block()
-            default{
-                items.fold(hashMapOf()) { map, it ->
-                    map[it.first] = it.second
-                    map
-                }
-            }
+            default{HashMap<String, ENUM>(items.size).also{it.putAll(items)}}
         }
-        return EnumMapField.get(ENUM::class, null).delegator
+        return EnumMapField<ENUM>().delegator
     }
 }
-abstract class SlowData:Data(){
-    val _fields:HashMap<String, Field<*>> = hashMapOf()
-    val _tasks:HashMap<Int, Task> = hashMapOf()
-}
-//abstract class eSlowEntity(isOrderedMap:Boolean = false): Data(isOrderedMap) {
-//
-//
-//    inline fun <ENTITY: Data> entityMap(cls:KClass<ENTITY>, noinline factory:()->ENTITY, block:SlowEntityMapField<ENTITY>.()->Unit = {}):Prop<MutableMap<String, ENTITY>>{
-//        SlowEntityMapField[cls,factory].firstTask()?.block()
-//        return SlowEntityMapField[cls,factory].delegator
-//    }
-//    inline fun <ENTITY: Data> entity(cls:KClass<ENTITY>, noinline factory:()->ENTITY, block:SlowEntityField<ENTITY>.()->Unit = {}):Prop<ENTITY>{
-////        println("field:${this} Adding : this=${this::class.qualifiedName}, cls=${cls.qualifiedName}")
-//        SlowEntityField[cls, factory].firstTask()?.block()
-//        return SlowEntityField[cls, factory].delegator
-//    }
-//    inline fun <ENTITY: Data> entityList(cls:KClass<ENTITY>, noinline factory:()->ENTITY, block:SlowEntityListField<ENTITY>.()->Unit = {}):Prop<MutableList<ENTITY>>{
-//        SlowEntityListField[cls, factory].firstTask()?.block()
-//        return SlowEntityListField[cls, factory].delegator
-//    }
-//}

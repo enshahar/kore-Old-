@@ -1,32 +1,29 @@
-package ein2b.core.entity.encoder
+@file:Suppress("NOTHING_TO_INLINE")
 
-import ein2b.core.date.eUtc
-import ein2b.core.entity.*
-import ein2b.core.entity.field.*
-import ein2b.core.entity.indexer.Indexer
+package kore.data.encoder
+
 import kore.data.task.TaskStore
 import kore.data.Data
 import kore.data.Union
-import kore.data.eSlowEntity
+import kore.data.converter.Converter
 import kore.data.field.*
 import kore.error.E
+import kore.wrap.W
+import kore.wrap.Wrap
 import kotlin.reflect.KClass
 
-fun Data.serializeEin(block:((E) -> Unit)? = null):String? = EinSerializer.serialize(this, block)
-fun <T: Data> T.unserializeEin(serial:String, block:((E) -> Unit)? = null):T? = EinSerializer.unserialize(this, serial, block)
-fun eSlowEntity.serializeEin(block:((E) -> Unit)? = null):String? = EinSerializer.serialize(this, block)
-fun <T: eSlowEntity> T.unserializeEin(serial:String, block:((E) -> Unit)? = null):T? = EinSerializer.unserialize(this, serial, block)
+inline fun Data.encodeKore():Wrap<String> = KoreConverter.toOther(this)
+inline fun <DATA:Data> DATA.decodeKore(serial:String):Wrap<DATA> = KoreConverter.toData(this, serial)
 
-private val encodeValue:(Any, Field<*>, Report)->String = { v, _, _->"$v"}
-private val encodeValueList:(Any, Field<*>, Report)->String = { v, _, _->(v as List<*>).joinToString("|")+"@"}
+private val encodeValue:(Any, Field<*>)->Wrap<String> = { v, _-> W("$v") }
+private val encodeValueList:(Any, Field<*>)->Wrap<String> = { v, _-> W((v as List<*>).joinToString("|")+"@")}
 
 @Suppress("NOTHING_TO_INLINE")
-object EinSerializer:Serializer<String>{
+object KoreConverter: Converter<String> {
     private const val optionalNullValue:Char = '~'
     private const val emptyStringListValue = '!'
-
     class Cursor(var v:Int)
-    private val encoders:HashMap<KClass<*>,(Any, Field<*>, Report)->String?> = hashMapOf(
+    private val encoders:HashMap<KClass<*>,(Any, Field<*>)->Wrap<String>> = hashMapOf(
         IntField::class to encodeValue,
         ShortField::class to encodeValue,
         LongField::class to encodeValue,
@@ -45,25 +42,25 @@ object EinSerializer:Serializer<String>{
         FloatListField::class to encodeValueList,
         DoubleListField::class to encodeValueList,
         BooleanListField::class to encodeValueList,
-        IntMapField::class to { v, _, _-> encodeValueMap(v) },
-        ShortMapField::class to { v, _, _-> encodeValueMap(v) },
-        LongMapField::class to { v, _, _-> encodeValueMap(v) },
-        UIntMapField::class to { v, _, _-> encodeValueMap(v) },
-        UShortMapField::class to { v, _, _-> encodeValueMap(v) },
-        ULongMapField::class to { v, _, _-> encodeValueMap(v) },
-        FloatMapField::class to { v, _, _-> encodeValueMap(v) },
-        DoubleMapField::class to { v, _, _-> encodeValueMap(v) },
-        BooleanMapField::class to { v, _, _-> encodeValueMap(v) },
+        IntMapField::class to { v, _-> W(encodeValueMap(v)) },
+        ShortMapField::class to { v, _-> encodeValueMap(v) },
+        LongMapField::class to { v, _-> encodeValueMap(v) },
+        UIntMapField::class to { v, _-> encodeValueMap(v) },
+        UShortMapField::class to { v, _-> encodeValueMap(v) },
+        ULongMapField::class to { v, _-> encodeValueMap(v) },
+        FloatMapField::class to { v, _-> encodeValueMap(v) },
+        DoubleMapField::class to { v, _-> encodeValueMap(v) },
+        BooleanMapField::class to { v, _-> encodeValueMap(v) },
 
-        UtcField::class to { v, _, _-> (v as? eUtc)?.let{ encodeString(it.toString()) } },
-        StringField::class to { v, _, _-> encodeString(v) },
-        StringListField::class to { v, _, _->(v as List<*>).let{
+        //UtcField::class to { v, _-> (v as? eUtc)?.let{ encodeString(it.toString()) } },
+        StringField::class to { v, _-> encodeString(v) },
+        StringListField::class to { v, _->(v as List<*>).let{
             if(it.isEmpty())
-                "${emptyStringListValue}"
+                "$emptyStringListValue"
             else
                 it.joinToString("|"){ encodeString(it) }+"@"}
         },
-        StringMapField::class to { v, _, _->
+        StringMapField::class to { v, _->
             var result = ""
             (v as Map<String,*>).forEach{(k,it)->result += "|" + encodeString(k) + "|" + encodeString(it) }
             encodeResult(result)
@@ -97,9 +94,9 @@ object EinSerializer:Serializer<String>{
                     } != null
                 }) encodeResult(result) else null
         },
-        EntityField::class to { v, _, r-> encodeEntity(v,r) },
+        DataField::class to { v, _, r-> encodeEntity(v,r) },
         SlowEntityField::class to { v, _, r-> encodeEntity(v,r) },
-        EntityListField::class to { v, _, r->
+        DataListField::class to { v, _, r->
             var result = ""
             if((v as List<*>).all { e -> encodeEntity(e!!,r)?.let { result+="|$it" } != null}) encodeResult(result) else null
         },
@@ -107,7 +104,7 @@ object EinSerializer:Serializer<String>{
             var result = ""
             if((v as List<*>).all { e -> encodeEntity(e!!,r)?.let { result+="|$it" } != null}) encodeResult(result) else null
         },
-        EntityMapField::class to { v, _, r->
+        DataMapField::class to { v, _, r->
             var result = ""
             if ((v as Map<String, *>).all { (k, it) ->
                     encodeEntity(it!!, r)?.let { value ->
@@ -261,19 +258,19 @@ object EinSerializer:Serializer<String>{
             }
             return result
         },
-        EntityField::class to { field, serial, cursor, report->
+        DataField::class to { field, serial, cursor, report->
             if(serial[cursor.v] == '|') ""
-            else decodeEntity(serial,cursor,(field as EntityField<*>).factory(),report)
+            else decodeEntity(serial,cursor,(field as DataField<*>).factory(),report)
         },
         SlowEntityField::class to { field, serial, cursor, report->
             if(serial[cursor.v] == '|') ""
-            else decodeEntity(serial,cursor,(field as EntityField<*>).factory(),report)
+            else decodeEntity(serial,cursor,(field as DataField<*>).factory(),report)
         },
-        EntityListField::class to fun(field, serial, cursor, report):Any?{
+        DataListField::class to fun(field, serial, cursor, report):Any?{
             val result = arrayListOf<Any>()
             if(serial[cursor.v] == '@') cursor.v++
             else{
-                val factory = (field as EntityListField<*>).factory
+                val factory = (field as DataListField<*>).factory
                 do{
                     result += decodeEntity(serial,cursor,factory(),report) ?:return null
                     if(cursor.v >= serial.length) return result
@@ -290,7 +287,7 @@ object EinSerializer:Serializer<String>{
             val result = arrayListOf<Any>()
             if(serial[cursor.v] == '@') cursor.v++
             else{
-                val factory = (field as EntityListField<*>).factory
+                val factory = (field as DataListField<*>).factory
                 do{
                     result += decodeEntity(serial,cursor,factory(),report) ?:return null
                     if(cursor.v >= serial.length) return result
@@ -303,11 +300,11 @@ object EinSerializer:Serializer<String>{
             }
             return result
         },
-        EntityMapField::class to fun(field, serial, cursor, report):Any?{
+        DataMapField::class to fun(field, serial, cursor, report):Any?{
             val result:HashMap<String, Data> = hashMapOf()
             if(serial[cursor.v] == '@') cursor.v++
             else{
-                val factory = (field as EntityMapField<*>).factory
+                val factory = (field as DataMapField<*>).factory
                 var pin = cursor.v
                 do {
                     when (serial[cursor.v++]) {
@@ -331,7 +328,7 @@ object EinSerializer:Serializer<String>{
             val result:HashMap<String, Data> = hashMapOf()
             if(serial[cursor.v] == '@') cursor.v++
             else{
-                val factory = (field as EntityMapField<*>).factory
+                val factory = (field as DataMapField<*>).factory
                 var pin = cursor.v
                 do {
                     when (serial[cursor.v++]) {
@@ -356,18 +353,19 @@ object EinSerializer:Serializer<String>{
         encoders[type] = block}
     fun setDecoder(type:KClass<*>,block:(field: Field<*>, serial:String, cursor: Cursor, report: Report)->Any?){
         decoders[type] = block}
-    override fun serialize(entity: Data, block:((E)->Unit)?):String? {
+
+    override fun toOther(data: Data):Wrap<String> {
         val report = Report()
-        val result = encodeEntity(entity, report)
+        val result = encodeEntity(data, report)
         if(result == null){
             if(block != null) report.report(block)
         }
         return result
     }
 
-    override fun <ENTITY: Data> unserialize(entity:ENTITY, value:String, block:((E)->Unit)?):ENTITY? {
+    override fun <ENTITY: Data> toData(data:ENTITY, value:String):Wrap<ENTITY> {
         val report = Report()
-        val result = decodeEntity(value, Cursor(0), entity, report)
+        val result = decodeEntity(value, Cursor(0), data, report)
         if(result == null){
             if(block != null) report.report(block)
         }
@@ -389,7 +387,7 @@ object EinSerializer:Serializer<String>{
     /**
      * decodeStringValue 를 외부에 제공해주기 위한 함수
      */
-    fun getDecodeStringValue(serial:String, cursor:Cursor):String = decodeStringValue(serial, cursor)
+    fun getDecodeStringValue(serial:String, cursor: Cursor):String = decodeStringValue(serial, cursor)
 
     /**
      * 디코더에서 사용하는 빈 객체
@@ -481,14 +479,16 @@ object EinSerializer:Serializer<String>{
             }
         }
 
-        val convert:ArrayList<Map.Entry<String, Field<*>>> = ArrayList<Map.Entry<String, Field<*>>>(fields.size).also{ list->repeat(fields.size){list.add(entry)}}
+        val convert:ArrayList<Map.Entry<String, Field<*>>> = ArrayList<Map.Entry<String, Field<*>>>(fields.size).also{ list->repeat(fields.size){list.add(
+            entry
+        )}}
         fields.forEach{
             convert[Indexer.get(type,it.key)] = it
         }
         convert.forEach{
             when{
                 serial.length == cursor.v->{}
-                serial[cursor.v] == optionalNullValue-> cursor.v++
+                serial[cursor.v] == optionalNullValue -> cursor.v++
                 else->{
                     val v = decode(it.value, serial, cursor, report) ?: return report(Data.ERROR.decode_error,"no value:${type.simpleName}:${it.key}")
                     try{
@@ -517,7 +517,7 @@ object EinSerializer:Serializer<String>{
             it.block() ?:return report(Data.ERROR.decode_error,"invalid type. $it,index:$index")
         }
     }
-    private inline fun <T> decodeValueMap(serial:String, cursor:Cursor, report:Report, block:String.()->T?):Any?{
+    private inline fun <T> decodeValueMap(serial:String, cursor: Cursor, report:Report, block:String.()->T?):Any?{
         var key:String? = null
         val result = hashMapOf<String,T>()
         decodeStringList(serial,cursor,report)?.forEach{
@@ -530,7 +530,7 @@ object EinSerializer:Serializer<String>{
         return result
     }
     private val regStringSplit = """(?<!\\)\|""".toRegex()
-    private inline fun decodeStringList(serial:String, cursor:Cursor, report:Report):List<String>?{
+    private inline fun decodeStringList(serial:String, cursor: Cursor, report:Report):List<String>?{
         // 빈 문자열 리스트는 특별처리를 해야 한다
         // 안 그러면 빈 문자열로 이뤄진 리스트와 아예 빈 리스트를 `|`만으로 100% 확신하면서 파싱할 수 없다.
         if(serial[cursor.v] == emptyStringListValue) {
@@ -551,7 +551,7 @@ object EinSerializer:Serializer<String>{
             it.split(regStringSplit)
         }
     }
-    private inline fun decodeStringValue(serial:String, cursor:Cursor):String{
+    private inline fun decodeStringValue(serial:String, cursor: Cursor):String{
         // 문자열은 필드로 들어간 경우만 처리하면 된다.
         // 리스트 원소로 들어갈 때는 decodeStringList에서 처리됨
         // 따라서 @를 만나면 오류임

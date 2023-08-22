@@ -2,7 +2,6 @@
 
 package kore.data.field
 
-import ein2b.core.entity.field.*
 import kore.data.Data
 import kore.data.SlowData
 import kore.data.indexer.Indexer
@@ -20,12 +19,12 @@ abstract class Field<VALUE:Any>{
         @Suppress("NOTHING_TO_INLINE")
         inline fun isNotObjectField(cls:KClass<*>):Boolean = cls !in objectField
         val objectField:HashSet<KClass<*>> = hashSetOf(
-            EntityField::class, EntityListField::class, EntityMapField::class,
+            DataField::class, DataListField::class, DataMapField::class,
             UnionField::class, UnionListField::class, UnionMapField::class
         )
-        val isInclude:()->Boolean = { true }
-        val isNotInclude:()->Boolean = { false }
-        val isOptional:()->Boolean = { true }
+        val isInclude:Data.()->Boolean = { true }
+        val isNotInclude:Data.()->Boolean = { false }
+        val isOptional:Data.()->Boolean = { true }
         private val fields:HashMap<KClass<out Data>, HashMap<String, Field<*>>> = hashMapOf()
         operator fun get(cls:KClass<out Data>):HashMap<String, Field<*>>? = fields[cls]
         operator fun set(cls:KClass<out Data>, newMap: HashMap<String, Field<*>>) {
@@ -61,7 +60,7 @@ abstract class Field<VALUE:Any>{
         inline fun isOptional(){
             task?.run{ include = isOptional }
         }
-        inline fun setResolver(noinline block:()->Boolean){
+        inline fun setResolver(noinline block:Data.()->Boolean){
             task?.run{ include = block }
         }
     }
@@ -69,14 +68,14 @@ abstract class Field<VALUE:Any>{
 //    inline fun Data.validator(vali:eVali){
 //        _task?.run{ this.vali = vali }
 //    }
-    inline fun Data.get(noinline block:(Any)->Any?){
+    inline fun Data.get(noinline block:(Data, Any)->Any?){
         _task?.let{ task ->
-            (task.getTasks ?: arrayListOf<(Any)->Any?>().also{task.getTasks = it}).add(block)
+            (task.getTasks ?: arrayListOf<(Data, Any)->Any?>().also{task.getTasks = it}).add(block)
         }
     }
-    inline fun Data.set(noinline block:(Any)->Any?){
+    inline fun Data.set(noinline block:(Data, Any)->Any?){
         _task?.let{ task ->
-            (task.setTasks ?: arrayListOf<(Any)->Any?>().also{task.setTasks = it}).add(block)
+            (task.setTasks ?: arrayListOf<(Data, Any)->Any?>().also{task.setTasks = it}).add(block)
         }
     }
 }
