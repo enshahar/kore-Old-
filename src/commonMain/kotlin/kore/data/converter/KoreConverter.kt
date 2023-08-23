@@ -25,9 +25,6 @@ replace("\\n", "\n").replace("\\r", "\r")
 inline fun Data.encodeKore():Wrap<String> = KoreConverter.encode(this)
 inline fun <DATA:Data> DATA.decodeKore(serial:String):Wrap<DATA> = KoreConverter.decode(this, serial)
 
-
-private val encodeValueList:(Any, Field<*>)->Wrap<String> = { v, _-> W((v as List<*>).joinToString("|")+"@")}
-
 @Suppress("NOTHING_TO_INLINE")
 object KoreConverter: Converter<String> {
     private const val optionalNullValue:Char = '~'
@@ -59,12 +56,7 @@ object KoreConverter: Converter<String> {
     }
 
 
-    private inline fun encodeResult(result:String) = (if(result.isNotBlank()) result.substring(1) else "") + "@"
-    private inline fun encodeValueMap(v:Any):String {
-        var result = ""
-        (v as Map<String,*>).forEach{(k,it)-> result += "|" + encodeString(k) + "|" + it.toString() }
-        return encodeResult(result)
-    }
+
     private inline fun encodeUnion(it:Any, union: Union<*>, report:Report):String?{
         val type:KClass<out Any> = it::class
         val index:Int = union.type.indexOf(type)

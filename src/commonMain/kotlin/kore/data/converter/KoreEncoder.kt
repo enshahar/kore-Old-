@@ -1,8 +1,9 @@
-@file:Suppress("NOTHING_TO_INLINE")
+@file:Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 
 package kore.data.converter
 
 import kore.data.Data
+import kore.data.SlowData
 import kore.data.field.*
 import kore.data.indexer.Indexer
 import kore.data.task.Task
@@ -18,9 +19,11 @@ internal object KoreEncoder{
     class EncodeDataNoField(val data:Data, val field:String): E(data, field)
     class EncodeDataNoValue(val data:Data): E(data)
     class EncodeDataNoInitialized(val data:Data): E(data)
+    fun encode(type:KClass<*>, v:Any, field: Field<*>):Wrap<String> = encoders[type]?.invoke(v, field) ?: W("$v")
     fun encodeData(d:Any):Wrap<String>{
         val data:Data = d as Data
-        val fields:HashMap<String, Field<*>> = Field[data::class] ?: return W(EncodeDataNoFieldAll(data))
+        val slowData:SlowData? = data as? SlowData
+        val fields:HashMap<String, Field<*>> = slowData?._fields ?: Field[data::class] ?: return W(EncodeDataNoFieldAll(data))
         if(fields.isEmpty()) return W("|")
         val values:MutableMap<String, Any?> = data._values ?: return W(EncodeDataNoValue(data))
         if(fields.size != values.size) return W(EncodeDataNoInitialized(data))
@@ -28,66 +31,53 @@ internal object KoreEncoder{
         val result:ArrayList<String> = ArrayList<String>(fields.size).also{list->repeat(fields.size){list.add("")}}
         values.forEach{ (k,v) ->
             val field:Field<*> = fields[k] ?: return W(EncodeDataNoField(data, k))
-            val task: Task? = TaskStore(type, k)
+            val index:Int = Indexer.get(type, k)() ?: return W(Data.NoIndex(k))
+            val task:Task? = slowData?._tasks?.get(index) ?: TaskStore(type, index)
             val include: ((Data) -> Boolean)? = task?.include
             when{
                 include == Field.isOptional-> v ?: '~'
                 include?.invoke(data) == false-> null
                 else-> v ?: task?.getDefault(data) ?:return W(EncodeDataNoField(data, k))
             }?.let{value->
-                Indexer.get(type, k)()?.let{index->
-                    result[index] = if(value == '~') "~" else{
-                        val wrap: Wrap<String> = encode(field::class, value, field)
-                        wrap() ?: return W(wrap.value as Throwable)
-                    }
-                } ?: return W(Throwable("no index"))
+                result[index] = if(value == '~') "~" else{
+                    val wrap: Wrap<String> = encode(field::class, value, field)
+                    wrap() ?: return W(wrap.value as Throwable)
+                }
             }
         }
         return W(result.joinToString("|", postfix="|"))
     }
-    private val encodeValue:(Any, Field<*>)->Wrap<String> = { v, _-> W("$v") }
-    fun encode(type:KClass<*>, v:Any, field: Field<*>):Wrap<String>{
-        return encoders[type]?.invoke(v, field) ?: encodeValue(v, field)
+    private val valueList:(Any, Field<*>)->Wrap<String> = { v, _-> W((v as List<*>).joinToString("|")+"@")}
+    private inline fun encodeResult(result:String) = (if(result.isNotBlank()) result.substring(1) else "") + "@"
+    private val valueMap:(Any, Field<*>)->Wrap<String> = {v, _ ->
+        var result = ""
+        (v as Map<String,*>).forEach{(k, it)-> result += "|" + encodeString(k) + "|" + it.toString() }
+        W(encodeResult(result))
     }
     internal val encoders:HashMap<KClass<*>,(Any, Field<*>)-> Wrap<String>> = hashMapOf(
-        IntField::class to encodeValue,
-        ShortField::class to encodeValue,
-        LongField::class to encodeValue,
-        UIntField::class to encodeValue,
-        UShortField::class to encodeValue,
-        ULongField::class to encodeValue,
-        FloatField::class to encodeValue,
-        DoubleField::class to encodeValue,
-        BooleanField::class to encodeValue,
-        IntListField::class to encodeValueList,
-        ShortListField::class to encodeValueList,
-        LongListField::class to encodeValueList,
-        UIntListField::class to encodeValueList,
-        UShortListField::class to encodeValueList,
-        ULongListField::class to encodeValueList,
-        FloatListField::class to encodeValueList,
-        DoubleListField::class to encodeValueList,
-        BooleanListField::class to encodeValueList,
-        IntMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-        ShortMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-        LongMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-        UIntMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-        UShortMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-        ULongMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-        FloatMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-        DoubleMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-        BooleanMapField::class to { v, _-> W(KoreConverter.encodeValueMap(v)) },
-
+        IntListField::class to valueList,
+        ShortListField::class to valueList,
+        LongListField::class to valueList,
+        UIntListField::class to valueList,
+        UShortListField::class to valueList,
+        ULongListField::class to valueList,
+        FloatListField::class to valueList,
+        DoubleListField::class to valueList,
+        BooleanListField::class to valueList,
+        IntMapField::class to valueMap,
+        ShortMapField::class to valueMap,
+        LongMapField::class to valueMap,
+        UIntMapField::class to valueMap,
+        UShortMapField::class to valueMap,
+        ULongMapField::class to valueMap,
+        FloatMapField::class to valueMap,
+        DoubleMapField::class to valueMap,
+        BooleanMapField::class to valueMap,
         //UtcField::class to { v, _-> (v as? eUtc)?.let{ encodeString(it.toString()) } },
-        StringField::class to { v, _-> W(KoreConverter.encodeString(v)) },
+        StringField::class to { v, _-> W(encodeString(v)) },
         StringListField::class to { v, _->(v as List<*>).let{
-            W(if (it.isEmpty()) "${KoreConverter.emptyStringListValue}" else it.joinToString("|") {
-                KoreConverter.encodeString(
-                    it
-                )
-            } + "@"
-        })
-        },
+            if (it.isEmpty()) W("!") else W(it.joinToString("|") {encodeString(it)} + "@")
+        }},
         StringMapField::class to { v, _->
             var result = ""
             (v as Map<String,*>).forEach{(k,it)->result += "|" + KoreConverter.encodeString(k) + "|" + KoreConverter.encodeString(
