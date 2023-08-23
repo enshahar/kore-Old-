@@ -1,4 +1,4 @@
-@file:Suppress("NOTHING_TO_INLINE", "PropertyName")
+@file:Suppress("NOTHING_TO_INLINE", "PropertyName", "UNCHECKED_CAST")
 
 package kore.data
 
@@ -13,58 +13,27 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 abstract class Data:ReadWriteProperty<Data, Any>{
-    class NoIndex(name:String):E(name)
-    class NotInitialized(name:String):E(name)
-    class GetTaskFail(result:Any):E(result)
-    class SetTaskFail(result:Any):E(result)
-    class DefaultNotValue(value:Any):E(value)
-//        setValue_ruleFail,
-//        setValue_taskFail,
-//        encode_error,
-//        decode_error,
-//        index_error,
+    class NoIndex(val name:String):E(name)
+    class NotInitialized(val name:String):E(name)
+    class GetTaskFail(val result:Any):E(result)
+    class SetTaskFail(val result:Any):E(result)
+    class DefaultNotValue(val value:Any):E(value)
+
     @JvmInline
     value class Immutable<T:Any>(val value:T)
-    companion object{
-//        inline fun <T: Data>parse(entity:T, json:String, report: Report = Report(), error:((Report)->Unit) = {}):T?{
-//            val r = entity.unserializeJson(json){
-//                report.id = it.id
-//                report.message = it.message
-//                report.result = it.result
-//            }
-//            return if(r != null && report.id == null) r
-//            else{
-//                error.invoke(report)
-//                null
-//            }
-//        }
-//        inline fun <T: Data>parseEin(entity:T, str:String, report: Report = Report(), error:((Report)->Unit) = {}):T?{
-//            val r = entity.unserializeEin(str){
-//                report.id = it.id
-//                report.message = it.message
-//                report.result = it.result
-//            }
-//            return if(r != null && report.id == null) r
-//            else{
-//                error.invoke(report)
-//                null
-//            }
-//        }
-    }
-
     /** lazy 필드 매칭용 인덱서 */
     @PublishedApi internal var _index = 0
     /** 실제 값을 보관하는 저장소 */
-    @PublishedApi internal var _values:MutableMap<String, Any>? = null
+    @PublishedApi internal var _values:MutableMap<String, Any?>? = null
     /** 외부에 표출되는 저장소 */
-    val props:MutableMap<String, Any> get() = _values ?: hashMapOf<String, Any>().also{ _values = it }
+    val props:MutableMap<String, Any?> get() = _values ?: hashMapOf<String, Any?>().also{ _values = it }
     override fun getValue(thisRef: Data, property:KProperty<*>):Any{
         val type: KClass<out Data> = this::class
         val name: String = property.name
         val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
         val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
-        val result:Any = _values!![name] ?: task?.default?.let{
-            setValue(thisRef, property, (it as? Function1<Data, Any>)?.invoke(this) ?: it)
+        val result:Any = _values!![name] ?: task?.getDefault(this)?.let{
+            setValue(thisRef, property, it)
             _values!![name]
         } ?: NotInitialized(name).terminate()
         return task?.getTasks?.fold(result){acc, getTask->
@@ -78,31 +47,14 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         val type: KClass<out Data> = this::class
         val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
         val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
-        var newValue:Any = value
-//        TaskStore.getVali(this, name)?.let{
-//            val (isOk, result) = it.check(newValue)
-//            if(!isOk){
-//                throw E(
-//                    ERROR.setValue_ruleFail,
-//                    "rule fail. ${this::class.simpleName}.${name} value:0.$newValue, result:1.$result",
-//                    newValue, result
-//                )
-//            }
-//            newValue = result
-//        }
-        _values!![name] = task?.setTasks?.fold(newValue){acc, setTask->
+        _values!![name] = task?.setTasks?.fold(value){acc, setTask->
             setTask(this, acc) ?: SetTaskFail(acc).terminate()
-        } ?: newValue
+        } ?: value
     }
     @PublishedApi internal var _lastIndex = -1
     @PublishedApi internal var _task: Task? = null
     @Suppress("NOTHING_TO_INLINE")
-    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD? = (
-        /** slow라면 인스턴스의 _tasks에서 아니라면 TaskStore에서 Task에 대한 최초 생성 판정을 함*/
-        (this as? SlowData)?.let{slow->
-            if(_index in slow._tasks) null else slow._tasks.getOrPut(_index){ Task() }
-        } ?: TaskStore.firstTask(this@Data)
-    )?.let{
+    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD? = TaskStore.firstTask(this@Data)?.let{
         /** 최초 생성된 Task라면 _task에 캐쉬를 잡고 필드 반환*/
         if(_task == null || _index != _lastIndex){
             _lastIndex = _index
