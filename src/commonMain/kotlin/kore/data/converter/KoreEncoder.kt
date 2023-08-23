@@ -37,10 +37,10 @@ internal object KoreEncoder{
             }?.let{value->
                 Indexer.get(type, k)()?.let{index->
                     result[index] = if(value == '~') "~" else{
-                        val wrap = encode(field::class, value, field)
+                        val wrap: Wrap<String> = encode(field::class, value, field)
                         wrap() ?: return W(wrap.value as Throwable)
                     }
-                }
+                } ?: return W(Throwable("no index"))
             }
         }
         return W(result.joinToString("|", postfix="|"))

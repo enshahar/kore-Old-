@@ -54,16 +54,25 @@ abstract class Data:ReadWriteProperty<Data, Any>{
     @PublishedApi internal var _lastIndex = -1
     @PublishedApi internal var _task: Task? = null
     @Suppress("NOTHING_TO_INLINE")
-    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD? = TaskStore.firstTask(this@Data)?.let{
-        /** 최초 생성된 Task라면 _task에 캐쉬를 잡고 필드 반환*/
-        if(_task == null || _index != _lastIndex){
-            _lastIndex = _index
-            _task = it
+    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD?{
+        val slowData:SlowData? = this as? SlowData
+        return if(slowData != null) {
+            if(_index in slowData._tasks) null
+            else{
+                slowData._tasks[_index] = Task()
+                this
+            }
+        }else TaskStore.firstTask(this@Data)?.let{
+            /** 최초 생성된 Task라면 _task에 캐쉬를 잡고 필드 반환*/
+            if(_task == null || _index != _lastIndex){
+                _lastIndex = _index
+                _task = it
+            }
+            this
+        } ?: _task?.let{
+            /** 캐쉬에 잡힌 _task가 있으면 그걸 반환*/
+            this
         }
-        this
-    } ?: _task?.let{
-        /** 캐쉬에 잡힌 _task가 있으면 그걸 반환*/
-        this
     }
     inline val int get() = int()
     inline val uint get() = uint()

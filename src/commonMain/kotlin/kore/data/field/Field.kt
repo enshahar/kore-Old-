@@ -34,7 +34,8 @@ abstract class Field<VALUE:Any>{
     val delegator = PropertyDelegateProvider<Data, ReadWriteProperty<Data, VALUE>>{ data, prop->
         val name: String = prop.name
         val type: KClass<out Data> = data::class
-        val field: HashMap<String, Field<*>> = fields.getOrPut(type){hashMapOf()}
+        val slowData: SlowData? = data as? SlowData
+        val field: HashMap<String, Field<*>> = slowData?._fields ?: fields.getOrPut(type){hashMapOf()}
         if(name !in field){
             field[name] = this
             Indexer.set(data::class, name, data._index++)
