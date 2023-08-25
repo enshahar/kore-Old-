@@ -57,13 +57,7 @@ object KoreConverter: Converter<String> {
 
 
 
-    private inline fun encodeUnion(it:Any, union: Union<*>, report:Report):String?{
-        val type:KClass<out Any> = it::class
-        val index:Int = union.type.indexOf(type)
-        if(index == -1) return report(Data.ERROR.encode_error,"invalid union subtype. unionType:${union.type},entity:${type.simpleName}")
-        val result = encodeEntity(it,report) ?: return null
-        return index.toString() + (if(result.isNotBlank()) "|$result" else "")
-    }
+
 
     /**
      * Decode-------------------------------

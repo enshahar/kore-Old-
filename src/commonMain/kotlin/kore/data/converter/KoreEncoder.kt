@@ -4,6 +4,7 @@ package kore.data.converter
 
 import kore.data.Data
 import kore.data.SlowData
+import kore.data.Union
 import kore.data.field.*
 import kore.data.indexer.Indexer
 import kore.data.task.Task
@@ -19,6 +20,7 @@ internal object KoreEncoder{
     class EncodeDataNoField(val data:Data, val field:String): E(data, field)
     class EncodeDataNoValue(val data:Data): E(data)
     class EncodeDataNoInitialized(val data:Data): E(data)
+    class EncodeNoEnum(val enums:Array<*>, val value:Any): E(enums, value)
     fun encode(type:KClass<*>, v:Any, field: Field<*>):Wrap<String> = encoders[type]?.invoke(v, field) ?: W("$v")
     fun encodeData(d:Any):Wrap<String>{
         val data:Data = d as Data
@@ -39,9 +41,11 @@ internal object KoreEncoder{
                 include?.invoke(data) == false-> null
                 else-> v ?: task?.getDefault(data) ?:return W(EncodeDataNoField(data, k))
             }?.let{value->
-                result[index] = if(value == '~') "~" else{
-                    val wrap: Wrap<String> = encode(field::class, value, field)
-                    wrap() ?: return W(wrap.value as Throwable)
+                if(value == '~') result[index] = "~"
+                else encode(field::class, value, field).get {
+                    result[index] = it
+                } orFail {
+                    return W(it)
                 }
             }
         }
@@ -80,63 +84,64 @@ internal object KoreEncoder{
         }},
         StringMapField::class to { v, _->
             var result = ""
-            (v as Map<String,*>).forEach{(k,it)->result += "|" + KoreConverter.encodeString(k) + "|" + KoreConverter.encodeString(
-                it
-            )
-            }
-            W(KoreConverter.encodeResult(result))
+            (v as Map<String,*>).forEach{(k,it)->result += "|" + encodeString(k) + "|" + encodeString(it)}
+            W(encodeResult(result))
         },
         EnumField::class to { v, field->
             val enums:Array<*> = (field as EnumField<*>).enums
             val index:Int = enums.indexOf(v)
-            if(index != -1) W("$index") else W(Data.EncodeEnum(enums, v))
+            if(index != -1) W("$index") else W(EncodeNoEnum(enums, v))
         },
         EnumListField::class to { v, field ->
             val enums: Array<*> = (field as EnumListField<*>).enums
             var result: String = ""
             var error:Any? = null
             if ((v as List<*>).all { e ->
-                    val index: Int = enums.indexOf(e)
-                    if(index == -1) {
-                        error = e
-                        false
-                    }else{
-                        result += "|$index"
-                        true
-                    }
-                }) W(KoreConverter.encodeResult(result)) else W(Data.EncodeEnum(enums, error!!))
+                val index:Int = enums.indexOf(e)
+                if(index == -1) {
+                    error = e
+                    false
+                }else{
+                    result += "|$index"
+                    true
+                }
+            }) W(encodeResult(result)) else W(EncodeNoEnum(enums, error!!))
         },
         EnumMapField::class to { v, field->
             val enums:Array<*> = (field as EnumMapField<*>).enums
             var result:String = ""
             var error:Any? = null
             if ((v as Map<String,*>).all { (k,e)->
-                    val index: Int = enums.indexOf(e)
-                    if (index == -1) {
-                        error = e
-                        false
-                    } else {
-                        result += "|" + KoreConverter.encodeString(k) + "|" + index.toString()
-                        true
-                    }
-                }) W(KoreConverter.encodeResult(result)) else W(Data.EncodeEnum(enums, error!!))
+                val index: Int = enums.indexOf(e)
+                if (index == -1) {
+                    error = e
+                    false
+                } else {
+                    result += "|" + encodeString(k) + "|" + index.toString()
+                    true
+                }
+            }) W(encodeResult(result)) else W(EncodeEnum(enums, error!!))
         },
-//        DataField::class to { v, _-> W(encodeEntity(v)) },
-//        DataListField::class to { v, _, r->
-//            var result = ""
-//            var error:Any? = null
-//            if((v as List<*>).all { e -> encodeEntity(e!!)?.let { result+="|$it" } != null}) encodeResult(result) else null
-//        },
-//        DataMapField::class to { v, _, r->
-//            var result = ""
-//            if ((v as Map<String, *>).all { (k, it) ->
-//                    encodeEntity(it!!, r)?.let { value ->
-//                        result += "|" + encodeString(k) + "|" + value
-//                    } != null
-//                }
-//            ) encodeResult(result) else null
-//        },
-//        UnionField::class to { v, field, r-> encodeUnion(v,(field as UnionField<*>).union,r) },
+        DataField::class to { v, _-> encodeData(v) },
+        DataListField::class to { v, _->
+            var result = ""
+            var error:Throwable? = null
+            if((v as List<*>).all { e ->
+                encodeData(e!!).get { result += "|$it" } orFail {
+                    error = it
+                }
+            }) W(encodeResult(result)) else W(error!!)
+        },
+        DataMapField::class to { v, _->
+            var result = ""
+            var error:Throwable? = null
+            if((v as Map<String, *>).all { (k, it) ->
+                encodeData(it!!).get { result += "|${encodeString(k)}|$it" } orFail {
+                    error = it
+                }
+            }) W(encodeResult(result)) else W(error!!)
+        },
+        UnionField::class to { v, field-> encodeUnion(v, (field as UnionField<*>).union) },
 //        UnionListField::class to { v, field, r->
 //            val un: Union<Data> = (field as UnionListField<*>).union
 //            var result = ""
@@ -153,4 +158,14 @@ internal object KoreEncoder{
 //            ) encodeResult(result) else null
 //        }
     )
+    private inline fun encodeUnion(it:Any, union: Union<*>):Wrap<String>{
+        val type:KClass<out Any> = it::class
+        val index:Int = union.type.indexOf(type)
+        return if(index == -1) W(EncodeInvalidUnion(union, it))
+            else encodeData(it).map{
+                index.toString() + (if(it.isNotBlank()) "|$it" else "")
+            }
+    }
+
+    class EncodeInvalidUnion(val union: Union<*>, val it:Any):E(union, it)
 }

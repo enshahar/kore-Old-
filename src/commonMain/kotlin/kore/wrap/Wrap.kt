@@ -41,4 +41,27 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
             }
         else -> value as VALUE
     }
+    @JvmInline
+    value class OrFail(val throwable:Throwable?){
+        inline infix fun orFail(block:(Throwable)->Unit):Boolean{
+            return throwable?.let{
+                block(it)
+            } == null
+        }
+    }
+    inline fun get(block:(VALUE)->Unit):OrFail{
+        val v = when(value){
+            is Throwable -> value
+            is Function0<*> ->try {
+                value.invoke() as VALUE
+            }catch (e:Throwable){
+                e
+            }
+            else -> value as VALUE
+        }
+        return if(v is Throwable) OrFail(v) else{
+            block(v as VALUE)
+            OrFail(null)
+        }
+    }
 }
