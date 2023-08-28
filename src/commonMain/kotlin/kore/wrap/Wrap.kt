@@ -12,7 +12,7 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
      */
     inline fun <OTHER:Any> map(crossinline block:(VALUE)->OTHER):Wrap<OTHER> = when(value){
         is Throwable -> this as Wrap<OTHER>
-        is Function0<*> -> Wrap{block(value.invoke() as VALUE)}
+        is Function0<*> -> try{Wrap{block(value.invoke() as VALUE)}}catch (e:Throwable){Wrap(e)}
         else -> Wrap(block(value as VALUE))
     }
     /** 최초의 값을 람다로 지정하지 않아도 이후 지연연산하게 변경함*/

@@ -17,6 +17,7 @@ object KoreConverter: Converter<String> {
     const val OPTIONAL_NULL: String = "~"
     const val OPTIONAL_NULL_C: Char = '~'
     const val STRINGLIST_EMPTY: String = "!"
+    const val STRINGLIST_EMPTY_C: Char = '!'
     class Cursor(val encoded:String, var v:Int){
         class DecodeNoListTeminator(val target:String): E(target)
         inline fun getAndNext():Char = encoded[v++]
@@ -60,5 +61,5 @@ object KoreConverter: Converter<String> {
         KoreDecoder.decoders[type] = block
     }
     override fun encode(data: Data):Wrap<String> = KoreEncoder.data(data)
-    override fun <DATA: Data> decode(data:DATA, encoded: String):Wrap<DATA> = KoreDecoder.decodeData(Cursor(encoded, 0), data)
+    override fun <DATA: Data> decode(data:DATA, encoded: String):Wrap<DATA> = KoreDecoder.data(Cursor(encoded, 0), data)
 }

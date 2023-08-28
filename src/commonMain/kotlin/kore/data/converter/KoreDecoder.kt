@@ -5,7 +5,9 @@ package kore.data.converter
 import kore.data.Data
 import kore.data.SlowData
 import kore.data.converter.KoreConverter.Cursor
+import kore.data.converter.KoreConverter.Cursor.DecodeNoListTeminator
 import kore.data.converter.KoreConverter.OPTIONAL_NULL_C
+import kore.data.converter.KoreConverter.STRINGLIST_EMPTY_C
 import kore.data.converter.KoreConverter.decodeString
 import kore.data.field.*
 import kore.data.indexer.Indexer
@@ -33,7 +35,7 @@ internal object KoreDecoder{
     private inline fun decode(cursor:Cursor, field: Field<*>):Wrap<Any>{
         return decoders[field::class]?.invoke(cursor, field) ?: W(DecodeNoDecoder(field, cursor.v, cursor.encoded))
     }
-    internal fun <DATA: Data> decodeData(cursor:Cursor, data:DATA):Wrap<DATA>{
+    internal fun <DATA: Data> data(cursor:Cursor, data:DATA):Wrap<DATA>{
         val type:KClass<out Data> = data::class
         val slowData: SlowData? = data as? SlowData
         /** 이미 data의 인스턴스를 받았으므로 slow의 _fields나 Field에 있을 수 밖에 없음*/
@@ -71,65 +73,55 @@ internal object KoreDecoder{
             it.block() ?: return W(DecodeInvalidListValue(field, it, index))
         })
     }
-    private inline fun <VALUE:Any> valueMap(cursor:Cursor, field: Field<*>, block:String.()->VALUE?):Wrap<HashMap<String, VALUE>>{
-        var key:String? = null
-        return W(cursor.nextValueList.fold(hashMapOf()){acc, it->
-            if(key == null) key = decodeString(it)
-            else{
-                acc[key!!] = it.block() ?: return W(DecodeInvalidMapValue(field, it, key!!))
-                key = null
+    private inline fun <VALUE:Any> valueMap(cursor:Cursor, field: Field<*>, crossinline block:String.()->VALUE?):Wrap<HashMap<String, VALUE>>{
+        return stringList(cursor).map{
+            var key:String? = null
+            it.fold(hashMapOf()) {acc, item->
+                if(key == null) key = item
+                else{
+                    acc[key!!] = item.block() ?: throw DecodeInvalidMapValue(field, item, key!!)
+                    key = null
+                }
+                acc
             }
-            acc
-        })
+        }
     }
     private inline fun stringValue(cursor: Cursor):Wrap<String>{
-        /** 문자열은 필드로 들어간 경우만 처리하면 된다.
-         *  리스트 원소로 들어갈 때는 stringList에서 처리됨
-         *  따라서 @를 만나면 오류임
-          */
         val encoded = cursor.encoded
         val pin = cursor.v
-        var pos = pin
+        var at = pin
         do {
-            pos = encoded.indexOf('|', pos)
-            if (pos == -1) { /** encoded 맨 끝까지 문자열인 경우 */
+            at = encoded.indexOf('|', at)
+            if (at == -1) { /** encoded 맨 끝까지 문자열인 경우 */
                 cursor.v = encoded.length
                 return W(decodeString(encoded.substring(pin, cursor.v)))
-            } else if(pos == pin){ /** 길이 0인 문자열 */
-                cursor.v
-                return W("")
-            } else { /** \| 스킵하기 */
-                if (encoded[pos-1] == '\\') pos++
-                else {
-                    cursor.v = pos
-                    return W(decodeString(encoded.substring(pin, pos)))
-                }
+            } else if(at == pin) return W("") /** 길이 0인 문자열  || 인 상황 */
+            else if (encoded[at-1] == '\\') at++ /** \| 스킵하기 */
+            else {
+                cursor.v = at
+                return W(decodeString(encoded.substring(pin, at)))
             }
         } while(true)
     }
-//    private val regStringSplit = """(?<!\\)\|""".toRegex()
-//    private inline fun decodeStringList(cursor: Cursor):List<String>?{
-//        // 빈 문자열 리스트는 특별처리를 해야 한다
-//        // 안 그러면 빈 문자열로 이뤄진 리스트와 아예 빈 리스트를 `|`만으로 100% 확신하면서 파싱할 수 없다.
-//        if(serial[cursor.v] == KoreConverter.STRINGLIST_EMPTY) {
-//            cursor.v++
-//            return listOf<String>()
-//        }
-//
-//        val pin = cursor.v
-//        var at = pin
-//        do{
-//            cursor.v = serial.indexOf("@",at)
-//            if(cursor.v == -1)
-//                return report(Data.ERROR.decode_error,"invalid stringList. pin:${pin}")
-//            if(serial[cursor.v-1] == '\\') at = cursor.v+1
-//            else break
-//        } while(true)
-//        return serial.substring(pin,cursor.v++).let{
-//            it.split(regStringSplit)
-//        }
-//    }
-
+    private val regStringSplit = """(?<!\\)\|""".toRegex()
+    private inline fun stringList(cursor: Cursor):Wrap<List<String>>{
+        val list:ArrayList<String> = arrayListOf()
+        if(cursor.curr == STRINGLIST_EMPTY_C) { /** !로 마크된 빈 리스트 */
+            cursor.v++
+            return W(list)
+        }
+        val encoded = cursor.encoded
+        val pin = cursor.v
+        var at = pin
+        do{
+            at = encoded.indexOf('@', at)
+            if(at == -1) return W(DecodeNoListTeminator(encoded.substring(pin)))
+            else if(encoded[at - 1] == '\\') at++
+            else break
+        }while(true)
+        cursor.v = at
+        return W(encoded.substring(pin, at).splitToSequence(regStringSplit).map{decodeString(it)}.toList())
+    }
     internal val decoders:HashMap<KClass<*>,(Cursor, Field<*>)->Wrap<Any>> = hashMapOf(
         IntField::class to { c, f->value(c, f){toIntOrNull()}},
         ShortField::class to { c, f->value(c, f){toShortOrNull()}},
@@ -159,79 +151,160 @@ internal object KoreDecoder{
         DoubleMapField::class to { c, f->valueMap(c, f){toDoubleOrNull()}},
         BooleanMapField::class to { c, f->valueMap(c, f){toBooleanStrictOrNull()}},
 //        UtcField::class to { _, serial, cursor, _-> KoreConverter.decodeStringValue(serial, cursor).let{ eUtc.of(it) } },
-        StringField::class to {c, f->stringValue(c) },
-//        StringListField::class to { _, s, c, r-> KoreConverter.decodeStringList(s, c, r)?.map(this::decodeString)},
-//        StringMapField::class to fun(_, serial, cursor, report):Any?{
-//            var key:String? = null
-//            val result = hashMapOf<String,String>()
-//            KoreConverter.decodeStringList(serial, cursor, report)?.forEach{
-//                if(key == null) key = KoreConverter.decodeString(it)
-//                else{
-//                    result[key!!] = KoreConverter.decodeString(it)
-//                    key = null
-//                }
-//            } ?: return null
-//            return result
-//        },
-//        EnumField::class to fun(field, serial, cursor, report):Any?{
-//            val idx = KoreConverter.decodeValue(serial, cursor, report, String::toIntOrNull) ?:return null
-//            return (field as EnumField<*>).enums[idx]
-//        },
-//        EnumListField::class to fun(field, serial, cursor, report):Any?{
-//            val enums = (field as EnumListField<*>).enums
-//            val pin = cursor.v
-//            cursor.v = serial.indexOf("@",pin)
-//            if(cursor.v == -1) return report(Data.ERROR.decode_error,"invalid enumList. pin:${pin}")
-//            return serial.substring(pin,cursor.v++).split('|').map{enums[it.toInt()]}
-//        },
-//        EnumMapField::class to fun(field, serial, cursor, report):Any?{
-//            val enums = (field as EnumMapField<*>).enums
-//            var key:String? = null
-//            val result = hashMapOf<String,Any>()
-//            KoreConverter.decodeStringList(serial, cursor, report)?.forEach {
-//                if(key == null) key = KoreConverter.decodeString(it)
-//                else{
-//                    result[key!!] = enums[it.toIntOrNull()?:return report(Data.ERROR.decode_error,"invalid enumMap. it:${it}")]
-//                    key = null
-//                }
-//            } ?: return null
-//            return result
-//        },
-//        UnionField::class to{ field, serial, cursor, report->
-//            val pin = cursor.v
-//            val p = serial.indexOf('|',pin)
-//            cursor.v = if(p==-1) serial.length else p
-//            KoreConverter.decodeEntity(
-//                serial,
-//                cursor,
-//                (field as UnionField<*>).union.factories[serial.substring(pin, cursor.v++).toInt()](),
-//                report
-//            )
-//        },
-//        UnionListField::class to fun(field, serial, cursor, report):Any?{
-//            val result = arrayListOf<Any>()
-//            if(serial[cursor.v] == '@') cursor.v++
-//            else {
-//                val factories = (field as UnionListField<*>).union.factories
-//                do {
-//                    val pin = cursor.v
-//                    cursor.v = serial.indexOf('|',pin)
-//                    result += KoreConverter.decodeEntity(
-//                        serial,
-//                        cursor,
-//                        factories[serial.substring(pin, cursor.v++).toInt()](),
-//                        report
-//                    ) ?: return null
-//                    if(serial[cursor.v-1] == '@' && serial[cursor.v-2] != '\\') return result
-//                    when (serial[cursor.v++]) {
-//                        '|'->{}//next item
-//                        '@'->if (serial[cursor.v-2] != '\\') return result
-//                        else->return report(Data.ERROR.decode_error,"invalid unionList token:${serial[cursor.v-1]} / cursor:${cursor.v-1}")
-//                    }
-//                } while(true)
-//            }
-//            return result
-//        },
+        StringField::class to {c, _->stringValue(c) },
+        StringListField::class to {c, _-> stringList(c)},
+        StringMapField::class to {c, _->
+            stringList(c).map{
+                var key:String? = null
+                it.fold(hashMapOf<String, String>()) {acc, item->
+                    if(key == null) key = item
+                    else{
+                        acc[key!!] = item
+                        key = null
+                    }
+                    acc
+                }
+            }
+        },
+        EnumField::class to {c,f->
+            value(c, f){toIntOrNull()}.map{(f as EnumField<*>).enums[it]}
+        },
+        EnumListField::class to {c, f->
+            val enums = (f as EnumListField<*>).enums
+            valueList(c, f){toIntOrNull()}.map{it.map{item->enums[item]}}
+        },
+        EnumMapField::class to {c, f->
+            val enums = (f as EnumMapField<*>).enums
+            stringList(c).map{
+                var key:String? = null
+                it.fold(hashMapOf<String, Enum<*>>()) {acc, item->
+                    if(key == null) key = item
+                    else{
+                        acc[key!!] = enums[item.toInt()]
+                        key = null
+                    }
+                    acc
+                }
+            }
+        },
+        DataField::class to { c, f->data(c, (f as DataField<*>).factory())},
+        DataListField::class to {c, f->
+            val result: ArrayList<Any> = arrayListOf()
+            var error:Throwable? = null
+            if(c.curr == '@') c.v++ /** 빈리스트*/
+            else{
+                val factory: () -> Data = (f as DataListField<*>).factory
+                val encoded:String = c.encoded
+                do{
+                    result.add(data(c, factory()))
+                    if(c.v < encoded.length) {
+                        when(c.getAndNext()) {
+                            '|' -> {} /** 다음데이터 */
+                            '@' -> break /** 리스트끝 */
+                            else -> { /** 잘못된 토큰 */
+                                error = DecodeNoListTeminator(encoded.substring(c.v - 1))
+                                break
+                            }
+                        }
+                    }else {
+                        error = DecodeNoListTeminator(encoded.substring(c.v - 1))
+                        break
+                    }
+                } while(true)
+            }
+            if(error == null) W(result) else W(error)
+        },
+        DataMapField::class to {c, f->
+            val result:HashMap<String, Data> = hashMapOf()
+            var error:Throwable? = null
+            if(c.curr == '@') c.v++
+            else{
+                val factory: () -> Data = (f as DataMapField<*>).factory
+                var pin = c.v
+                val encoded = c.encoded
+                do {
+                    var key:String? = null
+                    stringValue(c).get{key = it} orFail {error = it}
+                    if(error != null) break
+                    c.v++
+                    data(c, factory()).get{result[key!!] = it} orFail {error = it}
+                    if(error != null) break
+                    if(c.v < encoded.length) {
+                        when (c.getAndNext()) {
+                            '|' -> c.v++ /** 다음데이터 */
+                            '@' -> break /** 리스트끝 */
+                            else -> {
+                                error = DecodeNoListTeminator(encoded.substring(c.v - 1))
+                                break
+                            }
+                        }
+                    }else{
+                        error = DecodeNoListTeminator(encoded.substring(c.v - 1))
+                        break
+                    }
+                } while(true)
+            }
+            if(error == null) W(result) else W(error!!)
+        },
+        UnionField::class to {c, f->
+            var result:Wrap<*>? = null
+            value(c, f){toIntOrNull()}.get{
+                val factory:()->Data = (f as UnionField<*>).union.factories[it]
+                c.v++
+                result = data(c, factory())
+            } orFail {
+                result = W<Data>(it)
+            }
+            result!!
+        },
+        UnionListField::class to {c, f->
+            val result: ArrayList<Any> = arrayListOf()
+            var error:Throwable? = null
+            if(c.curr == '@') c.v++ /** 빈리스트*/
+            else{
+                val factory: () -> Data = (f as DataListField<*>).factory
+                val encoded:String = c.encoded
+                do{
+                    result.add(data(c, factory()))
+                    if(c.v < encoded.length) {
+                        when(c.getAndNext()) {
+                            '|' -> {} /** 다음데이터 */
+                            '@' -> break /** 리스트끝 */
+                            else -> { /** 잘못된 토큰 */
+                                error = DecodeNoListTeminator(encoded.substring(c.v - 1))
+                                break
+                            }
+                        }
+                    }else {
+                        error = DecodeNoListTeminator(encoded.substring(c.v - 1))
+                        break
+                    }
+                } while(true)
+            }
+            if(error == null) W(result) else W(error)
+            val result = arrayListOf<Any>()
+            if(serial[cursor.v] == '@') cursor.v++
+            else {
+                val factories = (field as UnionListField<*>).union.factories
+                do {
+                    val pin = cursor.v
+                    cursor.v = serial.indexOf('|',pin)
+                    result += KoreConverter.decodeEntity(
+                        serial,
+                        cursor,
+                        factories[serial.substring(pin, cursor.v++).toInt()](),
+                        report
+                    ) ?: return null
+                    if(serial[cursor.v-1] == '@' && serial[cursor.v-2] != '\\') return result
+                    when (serial[cursor.v++]) {
+                        '|'->{}//next item
+                        '@'->if (serial[cursor.v-2] != '\\') return result
+                        else->return report(Data.ERROR.decode_error,"invalid unionList token:${serial[cursor.v-1]} / cursor:${cursor.v-1}")
+                    }
+                } while(true)
+            }
+            return result
+        },
 //        UnionMapField::class to fun(field, serial, cursor, report):Any?{
 //            val result:HashMap<String, Data> = hashMapOf()
 //            if(serial[cursor.v] == '@') cursor.v++
@@ -263,95 +336,6 @@ internal object KoreDecoder{
 //            }
 //            return result
 //        },
-//        DataField::class to { field, serial, cursor, report->
-//            if(serial[cursor.v] == '|') ""
-//            else KoreConverter.decodeEntity(serial, cursor, (field as DataField<*>).factory(), report)
-//        },
-//        SlowEntityField::class to { field, serial, cursor, report->
-//            if(serial[cursor.v] == '|') ""
-//            else KoreConverter.decodeEntity(serial, cursor, (field as DataField<*>).factory(), report)
-//        },
-//        DataListField::class to fun(field, serial, cursor, report):Any?{
-//            val result = arrayListOf<Any>()
-//            if(serial[cursor.v] == '@') cursor.v++
-//            else{
-//                val factory = (field as DataListField<*>).factory
-//                do{
-//                    result += KoreConverter.decodeEntity(serial, cursor, factory(), report) ?:return null
-//                    if(cursor.v >= serial.length) return result
-//                    when(serial[cursor.v++]){
-//                        '|'->{}//next item
-//                        '@'->if (serial[cursor.v-2] != '\\') return result
-//                        else-> return report(Data.ERROR.decode_error,"invalid entityList token:${serial[cursor.v-1]} / cursor:${cursor.v-1}")
-//                    }
-//                } while(true)
-//            }
-//            return result
-//        },
-//        SlowEntityListField::class to fun(field, serial, cursor, report):Any?{
-//            val result = arrayListOf<Any>()
-//            if(serial[cursor.v] == '@') cursor.v++
-//            else{
-//                val factory = (field as DataListField<*>).factory
-//                do{
-//                    result += KoreConverter.decodeEntity(serial, cursor, factory(), report) ?:return null
-//                    if(cursor.v >= serial.length) return result
-//                    when(serial[cursor.v++]){
-//                        '|'->{}//next item
-//                        '@'->if (serial[cursor.v-2] != '\\') return result
-//                        else-> return report(Data.ERROR.decode_error,"invalid entityList token:${serial[cursor.v-1]} / cursor:${cursor.v-1}")
-//                    }
-//                } while(true)
-//            }
-//            return result
-//        },
-//        DataMapField::class to fun(field, serial, cursor, report):Any?{
-//            val result:HashMap<String, Data> = hashMapOf()
-//            if(serial[cursor.v] == '@') cursor.v++
-//            else{
-//                val factory = (field as DataMapField<*>).factory
-//                var pin = cursor.v
-//                do {
-//                    when (serial[cursor.v++]) {
-//                        '|'->{
-//                            if (serial[cursor.v-2] != '\\') {
-//                                val key = KoreConverter.decodeString(serial.substring(pin, cursor.v - 1))
-//                                result[key] = KoreConverter.decodeEntity(serial, cursor, factory(), report) ?:return null
-//                                when (serial[cursor.v++]) {
-//                                    '|'->pin = cursor.v
-//                                    '@'->return result
-//                                    else->return report(Data.ERROR.decode_error,"invalid entityMap token:${serial[cursor.v-1]} / cursor:${cursor.v-1}")
-//                                }
-//                            }
-//                        }
-//                    }
-//                } while(true)
-//            }
-//            return result
-//        },
-//        SlowEntityMapField::class to fun(field, serial, cursor, report):Any?{
-//            val result:HashMap<String, Data> = hashMapOf()
-//            if(serial[cursor.v] == '@') cursor.v++
-//            else{
-//                val factory = (field as DataMapField<*>).factory
-//                var pin = cursor.v
-//                do {
-//                    when (serial[cursor.v++]) {
-//                        '|'->{
-//                            if (serial[cursor.v-2] != '\\') {
-//                                val key = KoreConverter.decodeString(serial.substring(pin, cursor.v - 1))
-//                                result[key] = KoreConverter.decodeEntity(serial, cursor, factory(), report) ?:return null
-//                                when (serial[cursor.v++]) {
-//                                    '|'->pin = cursor.v
-//                                    '@'->return result
-//                                    else->return report(Data.ERROR.decode_error,"invalid entityMap token:${serial[cursor.v-1]} / cursor:${cursor.v-1}")
-//                                }
-//                            }
-//                        }
-//                    }
-//                } while(true)
-//            }
-//            return result
-//        }
+
     )
 }
