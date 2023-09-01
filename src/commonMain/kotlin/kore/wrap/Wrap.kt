@@ -12,56 +12,114 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
      */
     inline fun <OTHER:Any> map(crossinline block:(VALUE)->OTHER):Wrap<OTHER> = when(value){
         is Throwable -> this as Wrap<OTHER>
-        is Function0<*> -> try{Wrap{block(value.invoke() as VALUE)}}catch (e:Throwable){Wrap(e)}
+        is Function0<*> -> Wrap{
+            val v = value.invoke()!!
+            if(v is Throwable) v else block(v as VALUE)
+        }
         else -> Wrap(block(value as VALUE))
     }
     /** 최초의 값을 람다로 지정하지 않아도 이후 지연연산하게 변경함*/
     inline fun <OTHER:Any> mapLazy(crossinline block:(VALUE)->OTHER):Wrap<OTHER> = when(value){
         is Throwable -> this as Wrap<OTHER>
-        is Function0<*> -> Wrap{block(value.invoke() as VALUE)}
+        is Function0<*> -> Wrap{
+            val v = value.invoke()!!
+            if(v is Throwable) v else block(v as VALUE)
+        }
         else -> Wrap{block(value as VALUE)}
+    }
+    inline fun <OTHER:Any, ORIGIN:Any> List<ORIGIN>.flatMapList( block:(ORIGIN)->Wrap<OTHER>):Wrap<List<OTHER>>{
+        return W(foldIndexed(arrayListOf()){index, acc, it->
+            block(it).isEffected{acc[index] = it}?.let {return W(it)}
+            acc
+        })
+    }
+    inline fun <OTHER:Any> List<String>.flatMapListToMap( block:(key:String, value:String)->Wrap<OTHER>):Wrap<HashMap<String,OTHER>>{
+        val result:HashMap<String, OTHER> = hashMapOf()
+        var key:String? = null
+        var i = 0
+        while(i < size){
+            val it = get(i)
+            if(key == null) key = it
+            else{
+                block(key, it).isEffected{result[key!!] = it}?.let {return W(it)}
+                key = null
+            }
+            i++
+        }
+        return W(result)
+    }
+    /** map내에서 오류발생 가능성이 있다면 flatMap을 사용해야 함. */
+    inline fun <OTHER:Any> flatMap(crossinline block:Wrap<VALUE>.(VALUE)->Wrap<OTHER>):Wrap<OTHER> = when(value){
+        is Throwable -> this as Wrap<OTHER>
+        is Function0<*> ->{
+            val v = value.invoke()!!
+            if(v is Throwable) W(v) else block(v as VALUE)
+        }
+        else -> block(value as VALUE)
+    }
+    /** flatMap이 무조건 지연평가됨. */
+    inline fun <OTHER:Any> flatMapLazy(crossinline block:Wrap<VALUE>.(VALUE)->Wrap<OTHER>):Wrap<OTHER> = when(value){
+        is Throwable -> this as Wrap<OTHER>
+        is Function0<*> -> Wrap{block(value.invoke() as VALUE).value}
+        else -> Wrap{block(value as VALUE).value}
     }
     /** 실패값을 반드시 복원할 수 있는 정책이 있는 경우 복원용 람다를 통해 현재 상태를 나타내는 예외로부터 값을 만들어냄 */
     inline operator fun invoke(block:(Throwable)-> @UnsafeVariance VALUE):VALUE = when(value) {
         is Throwable -> block(value)
-        is Function0<*> ->try {
-                value.invoke()
-            }catch (e:Throwable){
-                block(e)
-            }
+        is Function0<*> ->{
+            val v = value.invoke()!!
+            if(v is Throwable) block(v) else v
+        }
         else -> value
     } as VALUE
     /** 정상인 값은 반환되지만 비정상인 값은 null이 됨. 지연연산 설정 시 이 시점에 해소됨*/
     inline operator fun invoke():VALUE? = when(value){
         is Throwable -> null
-        is Function0<*> ->try {
-                value.invoke() as VALUE
-            }catch (_:Throwable){
-                null
-            }
+        is Function0<*> ->{
+            val v = value.invoke()!!
+            if(v is Throwable) null else v as VALUE
+        }
         else -> value as VALUE
     }
-    @JvmInline
-    value class OrFail(val throwable:Throwable?){
-        inline infix fun orFail(block:(Throwable)->Unit):Boolean{
-            return throwable?.let{
-                block(it)
-            } == null
-        }
-    }
-    inline fun get(block:(VALUE)->Unit):OrFail{
-        val v = when(value){
-            is Throwable -> value
-            is Function0<*> ->try {
-                value.invoke() as VALUE
-            }catch (e:Throwable){
-                e
+    /** value를 얻어 사이드이펙트만 처리한 뒤 자신을 반환함*/
+    inline fun effect(block:(VALUE)->Unit):Wrap<VALUE>{
+        block(when(value){
+            is Throwable -> return this
+            is Function0<*> ->{
+                val v = value.invoke()!!
+                if(v is Throwable) return W(v)
+                v
             }
-            else -> value as VALUE
+            else -> value
+        } as VALUE)
+        return this
+    }
+    inline fun isEffected(block:(VALUE)->Unit= {}):Throwable?{
+        block(when(value){
+            is Throwable -> return value
+            is Function0<*> ->{
+                val v = value.invoke()!!
+                if(v is Throwable) return v
+                v
+            }
+            else -> value
+        } as VALUE)
+        return null
+    }
+    inline val ok:Wrap<VALUE>? get() = when(value) {
+        is Throwable -> null
+        is Function0<*> -> {
+            val v = value.invoke()!!
+            if(v is Throwable) W(v) else W(v as VALUE)
         }
-        return if(v is Throwable) OrFail(v) else{
-            block(v as VALUE)
-            OrFail(null)
+        else -> this
+    }
+    inline val fail:Wrap<VALUE>? get() = when(value){
+        is Throwable -> this
+        is Function0<*> ->{
+            val v = value.invoke()!!
+            if(v is Throwable) W(v) else null
         }
+        else -> null
     }
 }

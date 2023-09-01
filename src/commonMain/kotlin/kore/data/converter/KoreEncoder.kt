@@ -47,10 +47,8 @@ internal object KoreEncoder{
                 else-> v ?: task?.getDefault(data) ?:return W(EncodeDataNoField(data, k))
             }?.let{value->
                 if(value == OPTIONAL_NULL) result[index] = OPTIONAL_NULL
-                else encode(field::class, value, field).get {
+                else encode(field::class, value, field).effect {
                     result[index] = it
-                } orFail {
-                    return W(it)
                 }
             }
         }
@@ -141,18 +139,14 @@ internal object KoreEncoder{
             var result = ""
             var error:Throwable? = null
             if((v as List<*>).all { e ->
-                data(e!!).get { result += "|$it" } orFail {
-                    error = it
-                }
+                data(e!!).isEffected{ result += "|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         },
         DataMapField::class to { v, _->
             var result = ""
             var error:Throwable? = null
             if((v as Map<String, *>).all { (k, it) ->
-                data(it!!).get { result += "|${encodeString(k)}|$it" } orFail {
-                    error = it
-                }
+                data(it!!).isEffected{ result += "|${encodeString(k)}|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         },
         UnionField::class to { v, field-> union(v, (field as UnionField<*>).union) },
@@ -161,9 +155,7 @@ internal object KoreEncoder{
             var result = ""
             var error:Throwable? = null
             if((v as List<*>).all{ e ->
-                union(e!!,un).get{ result += "|$it" } orFail {
-                    error = it
-                }
+                union(e!!,un).isEffected{ result += "|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         },
         UnionMapField::class to { v, field->
@@ -171,9 +163,7 @@ internal object KoreEncoder{
             val un: Union<Data> = (field as UnionMapField<*>).union
             var error:Throwable? = null
             if((v as Map<String, *>).all{ (k, it) ->
-                union(it!!, un).get{ result += "|${encodeString(k)}|$it" } orFail {
-                    error = it
-                }
+                union(it!!, un).isEffected{ result += "|${encodeString(k)}|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         }
     )

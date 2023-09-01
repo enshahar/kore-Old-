@@ -50,14 +50,13 @@ internal object KoreDecoder{
             when{
                 cursor.isEnd->{}
                 cursor.curr == OPTIONAL_NULL_C -> cursor.v++
-                else-> decode(cursor, entry.value).get{
+                else-> decode(cursor, entry.value).flatMap{
                     try{
                         data.setRawValue(entry.key, it)
+                        W(it)
                     }catch(e:Throwable){
-                        return W(e)
+                        W(e)
                     }
-                } orFail {
-                    return W(it)
                 }
             }
             cursor.v++
@@ -68,22 +67,14 @@ internal object KoreDecoder{
         val target: String = cursor.nextValue
         return block(target)?.let{ W(it) } ?: W(DecodeInvalidValue(field, target, cursor.v))
     }
-    private inline fun <VALUE:Any> valueList(cursor: Cursor, field: Field<*>, block:String.()->VALUE?):Wrap<List<VALUE>>{
-        return W(cursor.nextValueList.mapIndexed{index,it->
-            it.block() ?: return W(DecodeInvalidListValue(field, it, index))
-        })
+    private inline fun <VALUE:Any> valueList(cursor: Cursor, field: Field<*>, crossinline block:String.()->Wrap<VALUE>):Wrap<List<VALUE>>{
+        return cursor.nextValueList.flatMap{list->
+            list.flatMapList(block)
+        }
     }
-    private inline fun <VALUE:Any> valueMap(cursor:Cursor, field: Field<*>, crossinline block:String.()->VALUE?):Wrap<HashMap<String, VALUE>>{
-        return stringList(cursor).map{
-            var key:String? = null
-            it.fold(hashMapOf()) {acc, item->
-                if(key == null) key = item
-                else{
-                    acc[key!!] = item.block() ?: throw DecodeInvalidMapValue(field, item, key!!)
-                    key = null
-                }
-                acc
-            }
+    private inline fun <VALUE:Any> valueMap(cursor:Cursor, field: Field<*>, crossinline block:(String, String)->Wrap<VALUE>):Wrap<HashMap<String, VALUE>>{
+        return stringList(cursor).flatMap{
+            it.flatMapListToMap(block)
         }
     }
     private inline fun stringValue(cursor: Cursor):Wrap<String>{
@@ -132,24 +123,24 @@ internal object KoreDecoder{
         FloatField::class to { c, f->value(c, f){toFloatOrNull()}},
         DoubleField::class to { c, f->value(c, f){toDoubleOrNull()}},
         BooleanField::class to { c, f->value(c, f){toBooleanStrictOrNull()}},
-        IntListField::class to { c, f->valueList(c, f){toIntOrNull()}},
-        ShortListField::class to { c, f->valueList(c, f){toUShortOrNull()}},
-        LongListField::class to { c, f->valueList(c, f){toLongOrNull()}},
-        UIntListField::class to { c, f->valueList(c, f){toUIntOrNull()}},
-        UShortListField::class to { c, f->valueList(c, f){toUShortOrNull()}},
-        ULongListField::class to { c, f->valueList(c, f){toULongOrNull()}},
-        FloatListField::class to { c, f->valueList(c, f){toFloatOrNull()}},
-        DoubleListField::class to { c, f->valueList(c, f){toDoubleOrNull()}},
-        BooleanListField::class to { c, f->valueList(c, f){toBooleanStrictOrNull()}},
-        IntMapField::class to { c, f->valueMap(c, f){toIntOrNull()}},
-        ShortMapField::class to { c, f->valueMap(c, f){toUShortOrNull()}},
-        LongMapField::class to { c, f->valueMap(c, f){toLongOrNull()}},
-        UIntMapField::class to { c, f->valueMap(c, f){toUIntOrNull()}},
-        UShortMapField::class to { c, f->valueMap(c, f){toUShortOrNull()}},
-        ULongMapField::class to { c, f->valueMap(c, f){toULongOrNull()}},
-        FloatMapField::class to { c, f->valueMap(c, f){toFloatOrNull()}},
-        DoubleMapField::class to { c, f->valueMap(c, f){toDoubleOrNull()}},
-        BooleanMapField::class to { c, f->valueMap(c, f){toBooleanStrictOrNull()}},
+        IntListField::class to { c, f->valueList(c, f){toIntOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        ShortListField::class to { c, f->valueList(c, f){toUShortOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        LongListField::class to { c, f->valueList(c, f){toLongOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        UIntListField::class to { c, f->valueList(c, f){toUIntOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        UShortListField::class to { c, f->valueList(c, f){toUShortOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        ULongListField::class to { c, f->valueList(c, f){toULongOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        FloatListField::class to { c, f->valueList(c, f){toFloatOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        DoubleListField::class to { c, f->valueList(c, f){toDoubleOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        BooleanListField::class to { c, f->valueList(c, f){toBooleanStrictOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
+        IntMapField::class to { c, f->valueMap(c, f){_, v->v.toIntOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        ShortMapField::class to { c, f->valueMap(c, f){_, v->v.toUShortOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        LongMapField::class to { c, f->valueMap(c, f){_, v->v.toLongOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        UIntMapField::class to { c, f->valueMap(c, f){_, v->v.toUIntOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        UShortMapField::class to { c, f->valueMap(c, f){_, v->v.toUShortOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        ULongMapField::class to { c, f->valueMap(c, f){_, v->v.toULongOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        FloatMapField::class to { c, f->valueMap(c, f){_, v->v.toFloatOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        DoubleMapField::class to { c, f->valueMap(c, f){_, v->v.toDoubleOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        BooleanMapField::class to { c, f->valueMap(c, f){_, v->v.toBooleanStrictOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
 //        UtcField::class to { _, serial, cursor, _-> KoreConverter.decodeStringValue(serial, cursor).let{ eUtc.of(it) } },
         StringField::class to {c, _->stringValue(c) },
         StringListField::class to {c, _-> stringList(c)},
@@ -171,176 +162,71 @@ internal object KoreDecoder{
         },
         EnumListField::class to {c, f->
             val enums = (f as EnumListField<*>).enums
-            valueList(c, f){toIntOrNull()}.map{it.map{item->enums[item]}}
+            valueList(c, f){toIntOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}.flatMap{
+                it.flatMapList {item->if(enums.size > item) W(enums[item]) else W(DecodeInvalidListValue(f, "$item", c.v))}
+            }
         },
         EnumMapField::class to {c, f->
             val enums = (f as EnumMapField<*>).enums
-            stringList(c).map{
-                var key:String? = null
-                it.fold(hashMapOf<String, Enum<*>>()) {acc, item->
-                    if(key == null) key = item
-                    else{
-                        acc[key!!] = enums[item.toInt()]
-                        key = null
-                    }
-                    acc
+            stringList(c).flatMap{
+                it.flatMapListToMap {k, v->
+                    v.toIntOrNull()?.let{index->
+                        if(enums.size > index) W(enums[index]) else W(DecodeInvalidMapValue(f, k, v))
+                    } ?: W(DecodeInvalidMapValue(f, k, v))
                 }
             }
         },
         DataField::class to { c, f->data(c, (f as DataField<*>).factory())},
         DataListField::class to {c, f->
             val result: ArrayList<Any> = arrayListOf()
-            var error:Throwable? = null
-            if(c.curr == '@') c.v++ /** 빈리스트*/
-            else{
-                val factory: () -> Data = (f as DataListField<*>).factory
-                val encoded:String = c.encoded
-                do{
-                    result.add(data(c, factory()))
-                    if(c.v < encoded.length) {
-                        when(c.getAndNext()) {
-                            '|' -> {} /** 다음데이터 */
-                            '@' -> break /** 리스트끝 */
-                            else -> { /** 잘못된 토큰 */
-                                error = DecodeNoListTeminator(encoded.substring(c.v - 1))
-                                break
-                            }
-                        }
-                    }else {
-                        error = DecodeNoListTeminator(encoded.substring(c.v - 1))
-                        break
-                    }
-                } while(true)
-            }
-            if(error == null) W(result) else W(error)
+            val factory: () -> Data = (f as DataListField<*>).factory
+            c.loopItems {
+                data(c, factory()).effect{result.add(it)}
+            } ?: W(result)
         },
         DataMapField::class to {c, f->
             val result:HashMap<String, Data> = hashMapOf()
-            var error:Throwable? = null
-            if(c.curr == '@') c.v++
-            else{
-                val factory: () -> Data = (f as DataMapField<*>).factory
-                var pin = c.v
-                val encoded = c.encoded
-                do {
-                    stringValue(c).get{key->
-                        c.v++
-                        data(c, factory()).get{
-                            result[key] = it
-                        } orFail {
-                            error = it
-                        }
-                    } orFail {error = it}
-                    if(error != null) break
-                    if(c.v < encoded.length) {
-                        when (c.getAndNext()) {
-                            '|' -> c.v++ /** 다음데이터 */
-                            '@' -> break /** 리스트끝 */
-                            else -> {
-                                error = DecodeNoListTeminator(encoded.substring(c.v - 1))
-                                break
-                            }
-                        }
-                    }else{
-                        error = DecodeNoListTeminator(encoded.substring(c.v - 1))
-                        break
-                    }
-                } while(true)
-            }
-            if(error == null) W(result) else W(error!!)
+            val factory: () -> Data = (f as DataMapField<*>).factory
+            c.loopItems {
+                stringValue(c).flatMap{ key->
+                    c.v++
+                    data(c, factory()).effect{result[key] = it}
+                }
+            } ?: W(result)
         },
         UnionField::class to {c, f->
-            var result:Data? = null
-            var error:Throwable? = null
-            value(c, f){toIntOrNull()}.get{
-                val factory:()->Data = (f as UnionField<*>).union.factories[it]
+            value(c, f){toIntOrNull()}.flatMap{ index->
+                val factory:()->Data = (f as UnionField<*>).union.factories[index]
                 c.v++
-                data(c, factory()).get {
-                    result = it
-                } orFail {
-                    error = it
-                }
-            } orFail {
-                error = it
+                data(c, factory())
             }
-            error?.let{W(it)} ?: W(result!!)
         },
         UnionListField::class to {c, f->
-            val result: ArrayList<Any> = arrayListOf()
-            var error:Throwable? = null
-            if(c.curr == '@'){ /** 빈리스트*/
-                c.v++
-                W(result)
-            }else{
-                val encoded:String = c.encoded
-                do{
-                    value(c, f){toIntOrNull()}.get{
-                        val factory:()->Data = (f as UnionField<*>).union.factories[it]
-                        c.v++
-                        data(c, factory()).get{
-                            result.add(it)
-                        } orFail {
-                            error = it
-                        }
-                    } orFail {
-                        error = it
+            val result:ArrayList<Any> = arrayListOf()
+            val factories:Array<out ()->Data> = (f as UnionField<*>).union.factories
+            c.loopItems {
+                value(c, f){toIntOrNull()}.map{factories[it]}.flatMap{ factory->
+                    c.v++
+                    data(c, factory()).effect{
+                        result.add(it)
                     }
-                    if(error != null) break
-                    if(c.v < encoded.length) {
-                        when(c.getAndNext()) {
-                            '|' -> {} /** 다음데이터 */
-                            '@' -> break /** 리스트끝 */
-                            else -> { /** 잘못된 토큰 */
-                                error = DecodeNoListTeminator(encoded.substring(c.v - 1))
-                                break
-                            }
-                        }
-                    }else {
-                        error = DecodeNoListTeminator(encoded.substring(c.v - 1))
-                        break
-                    }
-                } while(true)
-                error?.let{W(it)} ?: W(result)
-            }
+                }
+            }?.let{W(it)} ?: W(result)
         },
         UnionMapField::class to {c, f->
             val result:HashMap<String, Data> = hashMapOf()
-            var error:Throwable? = null
-            if(c.curr == '@') c.v++
-            else{
-                val encoded = c.encoded
-                do {
-                    stringValue(c).get{key->
+            val factories = (f as UnionField<*>).union.factories
+            c.loopItems {
+                stringValue(c).flatMap{ key->
+                    c.v++
+                    value(c, f){toIntOrNull()}.map{factories[it]()}.flatMap{
                         c.v++
-                        value(c, f){toIntOrNull()}.get{
-                            val factory:()->Data = (f as UnionField<*>).union.factories[it]
-                            c.v++
-                            data(c, factory()).get{
-                                result[key] = it
-                            } orFail {
-                                error = it
-                            }
-                        } orFail {
-                            error = it
+                        data(c, it).effect{
+                            result[key] = it
                         }
-                    } orFail {error = it}
-                    if(error != null) break
-                    if(c.v < encoded.length) {
-                        when (c.getAndNext()) {
-                            '|' -> c.v++ /** 다음데이터 */
-                            '@' -> break /** 리스트끝 */
-                            else -> {
-                                error = DecodeNoListTeminator(encoded.substring(c.v - 1))
-                                break
-                            }
-                        }
-                    }else{
-                        error = DecodeNoListTeminator(encoded.substring(c.v - 1))
-                        break
                     }
-                } while(true)
-            }
-            error?.let{ W(it) } ?: W(result)
+                }
+            } ?: W(result)
         },
     )
 }

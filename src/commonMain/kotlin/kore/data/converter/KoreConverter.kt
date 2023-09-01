@@ -5,6 +5,7 @@ package kore.data.converter
 import kore.data.Data
 import kore.data.field.*
 import kore.error.E
+import kore.wrap.W
 import kore.wrap.Wrap
 import kotlin.reflect.KClass
 
@@ -29,11 +30,27 @@ object KoreConverter: Converter<String> {
             if(v == -1) v = encoded.length
             return encoded.substring(start, v)
         }
-        inline val nextValueList:List<String> get(){
+        inline val nextValueList:Wrap<List<String>> get(){
             val start = v
             v = encoded.indexOf('@', start)
-            if(v == -1) DecodeNoListTeminator(encoded.substring(start)).terminate()
-            return encoded.substring(start, v++).split('|')
+            return if(v == -1) W(DecodeNoListTeminator(encoded.substring(start)))
+            else W(encoded.substring(start, v++).split('|'))
+        }
+        inline fun loopItems(block:()->Wrap<*>):Wrap<Any>?{
+            if(curr == '@'){
+                v++
+                return null
+            }
+            do{
+                block().fail?.let {return it}
+                if(v >= encoded.length){
+                    return W(DecodeNoListTeminator(encoded.substring(v - 1)))
+                }else when (getAndNext()) {
+                    '|' ->v++ /** 다음데이터 */
+                    '@' ->return null /** 리스트끝 */
+                    else ->return W(DecodeNoListTeminator(encoded.substring(v - 1)))
+                }
+            }while(true)
         }
     }
     /**
