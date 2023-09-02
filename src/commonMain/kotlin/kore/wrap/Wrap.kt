@@ -28,8 +28,8 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
         else -> Wrap{block(value as VALUE)}
     }
     inline fun <OTHER:Any, ORIGIN:Any> List<ORIGIN>.flatMapList( block:(ORIGIN)->Wrap<OTHER>):Wrap<List<OTHER>>{
-        return W(foldIndexed(arrayListOf()){index, acc, it->
-            block(it).isEffected{acc[index] = it}?.let {return W(it)}
+        return W(fold(ArrayList(size)){acc, it->
+            block(it).isEffected{acc.add(it)}?.let {return W(it)}
             acc
         })
     }
@@ -63,7 +63,7 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
         is Function0<*> -> Wrap{block(value.invoke() as VALUE).value}
         else -> Wrap{block(value as VALUE).value}
     }
-    /** 실패값을 반드시 복원할 수 있는 정책이 있는 경우 복원용 람다를 통해 현재 상태를 나타내는 예외로부터 값을 만들어냄 */
+    /** 실패값을 반드시 복원할 수 있는 정책이 있는 경우 복원용 람다를 통해 현재 상태를 나타내는 예외로부터 값을 만들어냄. 지연연산이 해소됨 */
     inline operator fun invoke(block:(Throwable)-> @UnsafeVariance VALUE):VALUE = when(value) {
         is Throwable -> block(value)
         is Function0<*> ->{
@@ -81,7 +81,18 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
         }
         else -> value as VALUE
     }
-    /** value를 얻어 사이드이펙트만 처리한 뒤 자신을 반환함*/
+    /** 정상값 Wrap을 얻거나 null을 얻음. 지연연산이 해소된 새로운 Wrap을 얻음*/
+    inline val ok:Wrap<VALUE>? get() = invoke()?.let{W(it)}
+    /** 오류값 Wrap을 얻거나 null을 얻음. 지연연산이 해소된 새로운 Wrap을 얻음*/
+    inline val fail:Wrap<VALUE>? get() = when(value){
+        is Throwable -> this
+        is Function0<*> ->{
+            val v = value.invoke()!!
+            if(v is Throwable) W(v) else null
+        }
+        else -> null
+    }
+    /** value를 얻어 사이드이펙트만 처리한 뒤 자신을 반환함. 지연연산이 해소된 Wrap을 얻음*/
     inline fun effect(block:(VALUE)->Unit):Wrap<VALUE>{
         block(when(value){
             is Throwable -> return this
@@ -94,6 +105,7 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
         } as VALUE)
         return this
     }
+    /** 부수효과가 실행되었다면 null 아니면 Throwable을 반환함. 지연연산이 해소됨 */
     inline fun isEffected(block:(VALUE)->Unit= {}):Throwable?{
         block(when(value){
             is Throwable -> return value
@@ -106,20 +118,6 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
         } as VALUE)
         return null
     }
-    inline val ok:Wrap<VALUE>? get() = when(value) {
-        is Throwable -> null
-        is Function0<*> -> {
-            val v = value.invoke()!!
-            if(v is Throwable) W(v) else W(v as VALUE)
-        }
-        else -> this
-    }
-    inline val fail:Wrap<VALUE>? get() = when(value){
-        is Throwable -> this
-        is Function0<*> ->{
-            val v = value.invoke()!!
-            if(v is Throwable) W(v) else null
-        }
-        else -> null
-    }
+
+
 }

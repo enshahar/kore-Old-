@@ -65,4 +65,73 @@ class TestR {
             throw Throwable("aa")
         }(), null)
     }
+    /** 복잡한 map */
+    @Test
+    fun test5(){
+        val wrap = W(arrayListOf(1,2,3,4,5))
+        val wrap1 = wrap.map { it.map{it*2} }
+        assertEquals(wrap1(), arrayListOf(2,4,6,8,10))
+        val wrap2 = wrap.flatMap {
+            it.flatMapList {
+                if(it % 2 == 0) W(it) else W(Throwable("test"))
+            }
+        }
+        assertEquals(wrap2(), null)
+        assertEquals(wrap2.isEffected()?.message, "test")
+        val wrap3 = wrap.flatMap {
+            it.flatMapList {
+                W(it*2)
+            }
+        }
+        assertEquals(wrap3(), arrayListOf(2,4,6,8,10))
+        val wrap4 = W(arrayListOf("a","1","b","2","c","3"))
+        val wrap5 = wrap4.flatMap {
+            it.flatMapListToMap { key, value ->
+                value.toIntOrNull()?.let{W(it)} ?: W(Throwable("not int $value"))
+            }
+        }
+        assertEquals(wrap5(), hashMapOf("a" to 1, "b" to 2, "c" to 3))
+        val wrap6 = W(arrayListOf("a","1","b","k","c","3")).flatMap {
+            it.flatMapListToMap { key, value ->
+                value.toIntOrNull()?.let{W(it)} ?: W(Throwable("not int $value"))
+            }
+        }
+        assertEquals(wrap6.isEffected()?.message, "not int k")
+    }
+    /**lazy실험 */
+    @Test
+    fun test6(){
+        val wrap1 = W(arrayListOf(1,2,3,4,5)).mapLazy {
+            it.map{it*2}
+        }
+        val wrap2 = wrap1.flatMap {
+            it.flatMapList {
+                W(it*3)
+            }
+        }
+        assertEquals(wrap2(), arrayListOf(6,12,18,24,30))
+        val wrap3 = wrap1.flatMap {
+            it.flatMapList {
+                if(it > 2) W(Throwable("big $it")) else W(it*3)
+            }
+        }
+        assertEquals(wrap3.isEffected()?.message, "big 4")
+        val wrap4 = W(arrayListOf(1,2,3,4,5)).flatMapLazy {
+            it.flatMapList {
+                W(it*3)
+            }
+        }
+        val wrap5 = wrap4.flatMap {
+            it.flatMapList {
+                W(it + 1)
+            }
+        }
+        assertEquals(wrap5(), arrayListOf(4,7,10,13,16))
+        val wrap6 = wrap5.flatMap {
+            it.flatMapList {
+                if(it > 10) W(Throwable("big $it")) else W(it + 1)
+            }
+        }
+        assertEquals(wrap6.isEffected()?.message, "big 13")
+    }
 }

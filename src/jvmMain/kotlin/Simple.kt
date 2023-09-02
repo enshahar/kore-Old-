@@ -1,6 +1,6 @@
 import kore.wrap.Wrap
 fun main() {
-    val a = Wrap.ok(3)
+    //val a = Wrap.ok(3)
 
 }
 
