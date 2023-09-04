@@ -47,7 +47,7 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         val type: KClass<out Data> = this::class
         val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
         val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
-        _values!![name] = task?.setTasks?.fold(value){acc, setTask->
+        props[name] = task?.setTasks?.fold(value){acc, setTask->
             setTask(this, acc) ?: SetTaskFail(acc).terminate()
         } ?: value
     }

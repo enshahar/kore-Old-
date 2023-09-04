@@ -1,0 +1,115 @@
+import kore.data.Data
+import kore.data.converter.encodeKore
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class TestKoreEncode1 {
+    class Test1:Data(){
+        var a by string
+        var b by int
+    }
+    @Test
+    fun test1(){
+        val t1 = Test1().also {
+            it.a = "hika"
+            it.b = 3
+        }
+        assertEquals(t1.encodeKore()(), "hika|3|")
+    }
+    class Test2:Data(){
+        var a by string
+        var b by int
+        var c by entity(::Test1)
+    }
+    @Test
+    fun test2(){
+        val t1 = Test2().also {
+            it.a = "hika1"
+            it.b = 3
+            it.c = Test1().also {
+                it.a = "hika2"
+                it.b = 4
+            }
+        }
+        assertEquals(t1.encodeKore()(), "hika1|3|hika2|4||")
+    }
+    class Test3:Data(){
+        var a by string
+        var b by stringList
+        var c by int
+        var d by intList
+        var e by entity(::Test1)
+        var f by entityList(::Test1)
+    }
+    @Test
+    fun test3(){
+        val t1 = Test3().also {
+            it.a = "hika1"
+            it.b = arrayListOf("a", "b", "c")
+            it.c = 3
+            it.d = arrayListOf(1,2,3)
+            it.e = Test1().also {
+                it.a = "hika2"
+                it.b = 4
+            }
+            it.f = arrayListOf(
+                Test1().also {
+                    it.a = "hika10"
+                    it.b = 10
+                },
+                Test1().also {
+                    it.a = "hika11"
+                    it.b = 11
+                }
+            )
+        }
+        assertEquals(t1.encodeKore()(), "hika1|a|b|c@|3|1|2|3@|hika2|4||hika10|10||hika11|11|@|")
+    }
+    class Test4:Data(){
+        var a by string
+        var b by stringMap
+        var c by int
+        var d by intMap
+        var e by entity(::Test1)
+        var f by entityMap(::Test1)
+    }
+    @Test
+    fun test4(){
+        val t1 = Test4().also {
+            it.a = "hika1"
+            it.b = hashMapOf("a" to "aa", "b" to "bb", "c" to "cc")
+            it.c = 3
+            it.d = hashMapOf("a" to 1, "b" to 2, "c" to 3)
+            it.e = Test1().also {
+                it.a = "hika2"
+                it.b = 4
+            }
+            it.f = hashMapOf(
+                "a" to Test1().also {
+                    it.a = "hika10"
+                    it.b = 10
+                },
+                "b" to Test1().also {
+                    it.a = "hika11"
+                    it.b = 11
+                }
+            )
+        }
+        assertEquals(t1.encodeKore()(), "hika1|a|aa|b|bb|c|cc@|3|a|1|b|2|c|3@|hika2|4||a|hika10|10||b|hika11|11|@|")
+    }
+    class Test5:Data(){
+        enum class Enum{A,B,C}
+        var a by enum<Enum>()
+        var b by enumList<Enum>()
+        var c by enumMap<Enum>()
+    }
+    @Test
+    fun test5(){
+        val t1 = Test5().also{
+            it.a = Test5.Enum.A
+            it.b = arrayListOf(Test5.Enum.B, Test5.Enum.C)
+            it.c = hashMapOf("a" to Test5.Enum.A, "b" to Test5.Enum.B)
+        }
+        assertEquals(t1.encodeKore()(), "0|1|2@|a|0|b|1@|")
+    }
+}
