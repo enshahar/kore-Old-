@@ -60,7 +60,10 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
     /** flatMap이 무조건 지연평가됨. */
     inline fun <OTHER:Any> flatMapLazy(crossinline block:Wrap<VALUE>.(VALUE)->Wrap<OTHER>):Wrap<OTHER> = when(value){
         is Throwable -> this as Wrap<OTHER>
-        is Function0<*> -> Wrap{block(value.invoke() as VALUE).value}
+        is Function0<*> -> Wrap{
+            val v = value.invoke()!!
+            if(v is Throwable) v else block(v as VALUE).value
+        }
         else -> Wrap{block(value as VALUE).value}
     }
     /** 실패값을 반드시 복원할 수 있는 정책이 있는 경우 복원용 람다를 통해 현재 상태를 나타내는 예외로부터 값을 만들어냄. 지연연산이 해소됨 */
@@ -118,6 +121,4 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
         } as VALUE)
         return null
     }
-
-
 }
