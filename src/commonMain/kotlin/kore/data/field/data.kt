@@ -33,6 +33,9 @@ class DataMapField<DATA: Data>(val cls: KClass<DATA>, val factory:()->DATA): Fie
         inline operator fun <reified DATA: Data> get(noinline factory:()->DATA): DataMapField<DATA> {
             return fields.getOrPut(DATA::class){DataMapField(DATA::class, factory)} as DataMapField<DATA>
         }
+        inline operator fun <DATA: Data> get(cls:KClass<DATA>, noinline factory:()->DATA): DataMapField<DATA> {
+            return fields.getOrPut(cls){DataMapField(cls, factory)} as DataMapField<DATA>
+        }
     }
     inline fun Data.default(noinline factory:(Data)-> Map<String,DATA>){
         _task?.default = factory

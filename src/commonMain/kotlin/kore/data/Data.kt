@@ -261,6 +261,10 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         DataMapField[factory].firstTask()?.block()
         return DataMapField[factory].delegator
     }
+    inline fun <DATA: Data> entityMap(cls:KClass<DATA>, noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
+        DataMapField[cls, factory].firstTask()?.block()
+        return DataMapField[cls, factory].delegator
+    }
     inline fun <reified DATA: Data> union(union: Union<DATA>, block: UnionField<DATA>.()->Unit = {}): Prop<DATA> {
         UnionField[union].firstTask()?.block()
         return UnionField[union].delegator

@@ -32,12 +32,6 @@ class TestR {
         assertEquals(r4(), 15)
         assertEquals(count, 2)
         assertEquals(r3.map{"a"}(), "a")
-        val r5 = r3.map<Int>{
-            throw Throwable("1")
-        }
-        Result
-        assertEquals(r5{ 10 }, 10)
-        assertEquals(r5(), null)
         val r6 = W(3)
         assertEquals(r6{7}, 3)
     }

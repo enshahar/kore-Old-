@@ -1,4 +1,5 @@
 import kore.data.Data
+import kore.data.Union
 import kore.data.converter.encodeKore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -111,5 +112,65 @@ class TestKoreEncode1 {
             it.c = hashMapOf("a" to Test5.Enum.A, "b" to Test5.Enum.B)
         }
         assertEquals(t1.encodeKore()(), "0|1|2@|a|0|b|1@|")
+    }
+    class Test6:Data(){
+        sealed class TestUnion:Data(){
+            companion object: Union<TestUnion>(::A, ::B)
+            class A:TestUnion(){
+                var c by entity(::Test1)
+            }
+            class B:TestUnion(){
+                var d by intList
+            }
+            var a by string
+            var b by int
+        }
+        var a by union(TestUnion)
+        var b by unionList(TestUnion)
+        var c by unionMap(TestUnion)
+    }
+    @Test
+    fun test6(){
+        val t1 = Test6().also {
+            it.a = Test6.TestUnion.A().also {
+                it.a = "a1"
+                it.b = 1
+                it.c = Test1().also {
+                    it.a = "c1"
+                    it.b = 2
+                }
+            }
+            it.b = arrayListOf(
+                Test6.TestUnion.A().also {
+                    it.a = "b1"
+                    it.b = 3
+                    it.c = Test1().also {
+                        it.a = "b2"
+                        it.b = 4
+                    }
+                },
+                Test6.TestUnion.B().also {
+                    it.a = "b2"
+                    it.b = 5
+                    it.d = arrayListOf(1,2,3)
+                }
+            )
+            it.c = hashMapOf(
+                "a" to Test6.TestUnion.A().also {
+                    it.a = "c1"
+                    it.b = 6
+                    it.c = Test1().also {
+                        it.a = "c2"
+                        it.b = 7
+                    }
+                },
+                "b" to Test6.TestUnion.B().also {
+                    it.a = "c2"
+                    it.b = 8
+                    it.d = arrayListOf(1,2,3)
+                }
+            )
+        }
+        assertEquals(t1.encodeKore()(), "0|a1|1|c1|2|||0|b1|3|b2|4|||1|b2|5|1|2|3@|@|a|0|c1|6|c2|7|||b|1|c2|8|1|2|3@|@|")
     }
 }
