@@ -11,6 +11,9 @@ class DataField<DATA: Data>(val cls: KClass<DATA>, val factory:()->DATA): Field<
         inline operator fun <reified DATA: Data> get(noinline factory:()->DATA): DataField<DATA> {
             return fields.getOrPut(DATA::class){DataField(DATA::class, factory)} as DataField<DATA>
         }
+        inline operator fun <DATA: Data> get(cls:KClass<DATA>, noinline factory:()->DATA): DataField<DATA> {
+            return fields.getOrPut(cls){DataField(cls, factory)} as DataField<DATA>
+        }
     }
     inline fun Data.default(noinline factory:(Data)-> DATA){
         _task?.default = factory

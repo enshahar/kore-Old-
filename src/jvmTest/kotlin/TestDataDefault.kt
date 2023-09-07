@@ -6,25 +6,45 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TestDataDefault {
-    class IntEnt(i:Int=0):Data(){
+    class Test1(i:Int=0):Data(){
         var x by int{default(i)}
         var y by int{default(2*i)}
     }
-    class DataMapTest<T: Data>(cls: KClass<T>, factory:()->T): SlowData() {
-        val emap = entityMap({IntEnt()})
-        val tmap = entityMap(cls, factory)
+    @Test
+    fun test1() {
+        val x1 = Test1(10)
+        val x2 = Test1(20)
+        assertEquals(x1.x, 10)
+        assertEquals(x1.y, 20)
+        assertEquals(x2.x, 10)
+        assertEquals(x2.y, 20)
+    }
+    class Test2<T: Data>(cls: KClass<T>, factory:()->T): SlowData() {
+        class A:Data(){
+            var a by int
+            var b by string
+        }
+        class B:Data(){
+            var c by int
+            var d by string
+        }
+        var a by data(cls, factory)
     }
 
     @Test
-    fun intDefault() {
-        val x1 = IntEnt(10)
-        val y1 = IntEnt(20)
-
-        val xs1 = x1.encodeKore()
-        val ys1 = y1.encodeKore()
-        println("${ys1.isEffected()?.message}--${ys1()}")
-        assertEquals(xs1(), "10|20|")
-        assertEquals(ys1(), "20|40|")
+    fun test2() {
+        val x1 = Test2(Test2.A::class) { Test2.A() }.also {
+            it.a = Test2.A().also {
+                it.a = 10
+                it.b = "hika"
+            }
+        }
+        val x2 = Test2(Test2.B::class) { Test2.B() }.also {
+            it.a = Test2.B().also {
+                it.c = 10
+                it.d = "hika"
+            }
+        }
 //        val x2 = eEntity.parse(IntEnt(0),xs1){
 //            println("Error: ${it.id} ${it.message}")
 //            if(it.result!=null) {

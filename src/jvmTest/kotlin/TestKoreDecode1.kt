@@ -1,10 +1,11 @@
 import kore.data.Data
 import kore.data.Union
+import kore.data.converter.decodeKore
 import kore.data.converter.encodeKore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class TestKoreEncode1 {
+class TestKoreDecode1 {
     class Test1:Data(){
         var a by string
         var b by int
@@ -16,6 +17,9 @@ class TestKoreEncode1 {
             it.b = 3
         }
         assertEquals(t1.encodeKore()(), "hika|3|")
+        val t2 = Test1().decodeKore("hika|3|")
+        assertEquals(t2()?.a, "hika")
+        assertEquals(t2()?.b, 3)
     }
     class Test2:Data(){
         var a by string
@@ -33,6 +37,11 @@ class TestKoreEncode1 {
             }
         }
         assertEquals(t1.encodeKore()(), "hika1|3|hika2|4||")
+        val t2 = Test2().decodeKore("hika1|3|hika2|4||")
+        assertEquals(t2()?.a, "hika1")
+        assertEquals(t2()?.b, 3)
+        assertEquals(t2()?.c?.a, "hika2")
+        assertEquals(t2()?.c?.b, 4)
     }
     class Test3:Data(){
         var a by string
@@ -65,6 +74,17 @@ class TestKoreEncode1 {
             )
         }
         assertEquals(t1.encodeKore()(), "hika1|a|b|c@|3|1|2|3@|hika2|4||hika10|10||hika11|11|@|")
+        val t2 = Test3().decodeKore("hika1|a|b|c@|3|1|2|3@|hika2|4||hika10|10||hika11|11|@|")
+        assertEquals(t2()?.a, "hika1")
+        assertEquals(t2()?.b, arrayListOf("a", "b", "c"))
+        assertEquals(t2()?.c, 3)
+        assertEquals(t2()?.d, arrayListOf(1,2,3))
+        assertEquals(t2()?.e?.a, "hika2")
+        assertEquals(t2()?.e?.b, 4)
+        assertEquals(t2()?.f?.get(0)?.a, "hika10")
+        assertEquals(t2()?.f?.get(0)?.b, 10)
+        assertEquals(t2()?.f?.get(1)?.a, "hika11")
+        assertEquals(t2()?.f?.get(1)?.b, 11)
     }
     class Test4:Data(){
         var a by string
@@ -97,6 +117,17 @@ class TestKoreEncode1 {
             )
         }
         assertEquals(t1.encodeKore()(), "hika1|a|aa|b|bb|c|cc@|3|a|1|b|2|c|3@|hika2|4||a|hika10|10||b|hika11|11|@|")
+        val t2 = Test4().decodeKore("hika1|a|aa|b|bb|c|cc@|3|a|1|b|2|c|3@|hika2|4||a|hika10|10||b|hika11|11|@|")
+        assertEquals(t2()?.a, "hika1")
+        assertEquals(t2()?.b, hashMapOf("a" to "aa", "b" to "bb", "c" to "cc"))
+        assertEquals(t2()?.c, 3)
+        assertEquals(t2()?.d, hashMapOf("a" to 1, "b" to 2, "c" to 3))
+        assertEquals(t2()?.e?.a, "hika2")
+        assertEquals(t2()?.e?.b, 4)
+        assertEquals(t2()?.f?.get("a")?.a, "hika10")
+        assertEquals(t2()?.f?.get("a")?.b, 10)
+        assertEquals(t2()?.f?.get("b")?.a, "hika11")
+        assertEquals(t2()?.f?.get("b")?.b, 11)
     }
     class Test5:Data(){
         enum class Enum{A,B,C}
@@ -112,6 +143,10 @@ class TestKoreEncode1 {
             it.c = hashMapOf("a" to Test5.Enum.A, "b" to Test5.Enum.B)
         }
         assertEquals(t1.encodeKore()(), "0|1|2@|a|0|b|1@|")
+        val t2 = Test5().decodeKore("0|1|2@|a|0|b|1@|")
+        assertEquals(t2()?.a, Test5.Enum.A)
+        assertEquals(t2()?.b, arrayListOf(Test5.Enum.B, Test5.Enum.C))
+        assertEquals(t2()?.c, hashMapOf("a" to Test5.Enum.A, "b" to Test5.Enum.B))
     }
     class Test6:Data(){
         sealed class TestUnion:Data(){
@@ -172,5 +207,14 @@ class TestKoreEncode1 {
             )
         }
         assertEquals(t1.encodeKore()(), "0|a1|1|c1|2|||0|b1|3|b2|4|||1|b2|5|1|2|3@|@|a|0|c1|6|c2|7|||b|1|c2|8|1|2|3@|@|")
+        val t2 = Test6().decodeKore("0|a1|1|c1|2|||0|b1|3|b2|4|||1|b2|5|1|2|3@|@|a|0|c1|6|c2|7|||b|1|c2|8|1|2|3@|@|")
+        assertEquals(t2()?.a?.a, "a1")
+        assertEquals(t2()?.a?.b, 1)
+        assertEquals((t2()?.a as? Test6.TestUnion.A)?.c?.a, "c1")
+        assertEquals((t2()?.a as? Test6.TestUnion.A)?.c?.b, 2)
+        assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.a, "a1")
+        assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.b, 3)
+        assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.c?.a, "b1")
+        assertEquals(t2()?.b, arrayListOf(Test5.Enum.B, Test5.Enum.C))
     }
 }

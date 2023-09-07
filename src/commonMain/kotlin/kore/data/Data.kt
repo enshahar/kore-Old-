@@ -32,9 +32,9 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         val name: String = property.name
         val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
         val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
-        val result:Any = _values!![name] ?: task?.getDefault(this)?.let{
+        val result:Any = props[name] ?: task?.getDefault(this)?.let{
             setValue(thisRef, property, it)
-            _values!![name]
+            props[name]
         } ?: NotInitialized(name).terminate()
         return task?.getTasks?.fold(result){acc, getTask->
             getTask(this, acc) ?: GetTaskFail(acc).terminate()
@@ -47,9 +47,11 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         val type: KClass<out Data> = this::class
         val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
         val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
+//        println("rawset0 $name $value, $index, $task, ${task?.setTasks}")
         props[name] = task?.setTasks?.fold(value){acc, setTask->
             setTask(this, acc) ?: SetTaskFail(acc).terminate()
         } ?: value
+//        println("rawset1 ${props[name]}")
     }
     @PublishedApi internal var _lastIndex = -1
     @PublishedApi internal var _task: Task? = null
@@ -249,19 +251,23 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         EnumMapField<ENUM>().firstTask()?.block()
         return EnumMapField<ENUM>().delegator
     }
-    inline fun <reified DATA: Data> entity(noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
+    inline fun <reified DATA: Data> data(noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
         DataField[factory].firstTask()?.block()
         return DataField[factory].delegator
     }
-    inline fun <reified DATA: Data> entityList(noinline factory:()->DATA, block: DataListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
+    inline fun <DATA: Data> data(cls:KClass<DATA>, noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
+        DataField[cls, factory].firstTask()?.block()
+        return DataField[cls, factory].delegator
+    }
+    inline fun <reified DATA: Data> dataList(noinline factory:()->DATA, block: DataListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
         DataListField[factory].firstTask()?.block()
         return DataListField[factory].delegator
     }
-    inline fun <reified DATA: Data> entityMap(noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
+    inline fun <reified DATA: Data> dataMap(noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
         DataMapField[factory].firstTask()?.block()
         return DataMapField[factory].delegator
     }
-    inline fun <DATA: Data> entityMap(cls:KClass<DATA>, noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
+    inline fun <DATA: Data> dataMap(cls:KClass<DATA>, noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
         DataMapField[cls, factory].firstTask()?.block()
         return DataMapField[cls, factory].delegator
     }
