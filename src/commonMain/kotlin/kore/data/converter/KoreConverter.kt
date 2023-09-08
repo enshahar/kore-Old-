@@ -46,7 +46,7 @@ object KoreConverter: Converter<String> {
                 if(v >= encoded.length){
                     return W(DecodeNoListTeminator(encoded.substring(v - 1)))
                 }else when (getAndNext()) {
-                    '|' ->v++ /** 다음데이터 */
+                    '|' -> {} /** 다음데이터 */
                     '@' ->return null /** 리스트끝 */
                     else ->return W(DecodeNoListTeminator(encoded.substring(v - 1)))
                 }

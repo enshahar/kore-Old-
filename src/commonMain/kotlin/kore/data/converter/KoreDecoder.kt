@@ -47,6 +47,7 @@ internal object KoreDecoder{
         repeat(fields.size){convert.add(entry)}
         fields.forEach{convert[Indexer.get(type, it.key)()!!] = it}
         convert.forEach{entry->
+            //println("key ${entry.key}, ${entry.value}, ${cursor.isEnd}, ${decoders[entry.value::class]}, ${cursor.v}")
             when{
                 cursor.isEnd->{}
                 cursor.curr == OPTIONAL_NULL_C -> cursor.v++
@@ -110,7 +111,7 @@ internal object KoreDecoder{
             else if(encoded[at - 1] == '\\') at++
             else break
         }while(true)
-        cursor.v = at
+        cursor.v = at + 1
         return W(encoded.substring(pin, at).splitToSequence(regStringSplit).map{decodeString(it)}.toList())
     }
     internal val decoders:HashMap<KClass<*>,(Cursor, Field<*>)->Wrap<Any>> = hashMapOf(
@@ -203,9 +204,11 @@ internal object KoreDecoder{
         },
         UnionListField::class to {c, f->
             val result:ArrayList<Any> = arrayListOf()
-            val factories:Array<out ()->Data> = (f as UnionField<*>).union.factories
+            val factories:Array<out ()->Data> = (f as UnionListField<*>).union.factories
             c.loopItems {
-                value(c, f){toIntOrNull()}.map{factories[it]}.flatMap{ factory->
+                value(c, f){toIntOrNull()}.map{
+                    factories[it]
+                }.flatMap{ factory->
                     c.v++
                     data(c, factory()).effect{
                         result.add(it)
@@ -215,7 +218,7 @@ internal object KoreDecoder{
         },
         UnionMapField::class to {c, f->
             val result:HashMap<String, Data> = hashMapOf()
-            val factories = (f as UnionField<*>).union.factories
+            val factories = (f as UnionMapField<*>).union.factories
             c.loopItems {
                 stringValue(c).flatMap{ key->
                     c.v++
