@@ -204,9 +204,11 @@ internal object KoreDecoder{
         },
         UnionListField::class to {c, f->
             val result:ArrayList<Any> = arrayListOf()
-            val factories:Array<out ()->Data> = (f as UnionField<*>).union.factories
+            val factories:Array<out ()->Data> = (f as UnionListField<*>).union.factories
             c.loopItems {
-                value(c, f){toIntOrNull()}.map{factories[it]}.flatMap{ factory->
+                value(c, f){toIntOrNull()}.map{
+                    factories[it]
+                }.flatMap{ factory->
                     c.v++
                     data(c, factory()).effect{
                         result.add(it)
@@ -216,7 +218,7 @@ internal object KoreDecoder{
         },
         UnionMapField::class to {c, f->
             val result:HashMap<String, Data> = hashMapOf()
-            val factories = (f as UnionField<*>).union.factories
+            val factories = (f as UnionMapField<*>).union.factories
             c.loopItems {
                 stringValue(c).flatMap{ key->
                     c.v++

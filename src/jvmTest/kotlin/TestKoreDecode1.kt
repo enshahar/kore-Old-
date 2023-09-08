@@ -150,7 +150,7 @@ class TestKoreDecode1 {
     }
     class Test6:Data(){
         sealed class TestUnion:Data(){
-            companion object: Union<TestUnion>(::A, ::B)
+            companion object: Union<TestUnion>({A()}, {B()})
             class A:TestUnion(){
                 var c by data(::Test1)
             }
@@ -212,9 +212,12 @@ class TestKoreDecode1 {
         assertEquals(t2()?.a?.b, 1)
         assertEquals((t2()?.a as? Test6.TestUnion.A)?.c?.a, "c1")
         assertEquals((t2()?.a as? Test6.TestUnion.A)?.c?.b, 2)
-        assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.a, "a1")
+        assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.a, "b1")
         assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.b, 3)
-        assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.c?.a, "b1")
-        assertEquals(t2()?.b, arrayListOf(Test5.Enum.B, Test5.Enum.C))
+        assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.c?.a, "b2")
+        assertEquals((t2()?.b?.get(0) as? Test6.TestUnion.A)?.c?.b, 4)
+        assertEquals((t2()?.b?.get(1) as? Test6.TestUnion.B)?.a, "b2")
+        assertEquals((t2()?.b?.get(1) as? Test6.TestUnion.B)?.b, 5)
+        assertEquals((t2()?.b?.get(1) as? Test6.TestUnion.B)?.d, arrayListOf(1,2,3))
     }
 }
