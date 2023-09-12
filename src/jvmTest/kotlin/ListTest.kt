@@ -34,6 +34,8 @@ class ListTest{
         assertEquals(list.dropLast2(2).tail, List.Nil)
         println("list.dropLast2(2) ${list.dropLast2(1)}")
         assertEquals(list.dropLast2(1).tail.head, 2)
+        assertEquals(list.reverse().head, 3)
+        assertEquals(list.reverse().tail.head, 2)
     }
 
 }

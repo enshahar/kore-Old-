@@ -78,13 +78,34 @@ tailrec fun <ITEM:Any, ACC:Any> List<ITEM>.fold(acc:ACC, block:(ACC, ITEM)->ACC)
     is List.Nil -> acc
     is List.Cons -> _tail.fold(block(acc, _head), block)
 }
+fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight2(acc:ACC, block:(ITEM, ACC)->ACC):ACC = fold(acc){acc, it->
+    
+}
 fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight(acc:ACC, block:(ITEM, ACC)->ACC):ACC = when(this){
     is List.Nil -> acc
     is List.Cons -> block(_head, _tail.foldRight(acc, block))
 }
+@PublishedApi internal fun <ITEM:Any, ACC:Any> List<ITEM>._foldRightIndexed(index:Int, acc:ACC, block:(Int, ITEM, ACC)->ACC):ACC = when(this){
+    is List.Nil -> acc
+    is List.Cons -> block(index, _head, _tail._foldRightIndexed(index - 1, acc, block))
+}
+fun <ITEM:Any, ACC:Any> List<ITEM>.foldRightIndexed(acc:ACC, block:(Int, ITEM, ACC)->ACC):ACC = _foldRightIndexed(size - 1, acc, block)
 val <ITEM:Any> List<ITEM>.clone2:List<ITEM> get() = append2()
 fun <ITEM:Any> List<ITEM>.append2(list:List<ITEM> = List.empty()):List<ITEM> = foldRight(list){it, acc->List.Cons(it, acc)}
 inline val <ITEM:Any> List<ITEM>.size:Int get() = fold(0){acc, _->acc + 1}
-fun <ITEM:Any> List<ITEM>.dropLast2(n:Int = 1):List<ITEM> = foldRight(List.empty()){ it, acc->
-    if(n == 0) List.Cons(it, acc) else acc
+fun <ITEM:Any> List<ITEM>.dropLast2(n:Int = 1):List<ITEM> = foldRightIndexed(List.empty()){ index, it, acc->
+    if(index >= n) List.Cons(it, acc) else List.empty()
+}
+inline fun List<Int>.sum():Int = fold(0){acc, it-> acc + it}
+inline fun List<Long>.sum():Long = fold(0L){acc, it-> acc + it}
+inline fun List<Float>.sum():Float = fold(0.0f){acc, it-> acc + it}
+inline fun List<Double>.sum():Double = fold(0.0){acc, it-> acc + it}
+
+inline fun List<Int>.product():Int = fold(0){acc, it-> acc * it}
+inline fun List<Long>.product():Long = fold(0L){acc, it-> acc * it}
+inline fun List<Float>.product():Float = fold(0.0f){acc, it-> acc * it}
+inline fun List<Double>.product():Double = fold(0.0){acc, it-> acc * it}
+
+fun <ITEM:Any> List<ITEM>.reverse():List<ITEM> = fold(List.empty()){acc, it->
+    List.Cons(it, acc)
 }
