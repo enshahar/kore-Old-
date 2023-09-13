@@ -94,6 +94,8 @@ fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight(base:ACC, block:(ITEM, ACC)->ACC):A
 fun <ITEM:Any, ACC:Any> List<ITEM>.foldRightIndexed(base:ACC, block:(Int, ITEM, ACC)->ACC):ACC = _foldRightIndexed(size - 1, base, block)
 val <ITEM:Any> List<ITEM>.clone2:List<ITEM> get() = append2()
 fun <ITEM:Any> List<ITEM>.append2(list:List<ITEM> = List.empty()):List<ITEM> = foldRight(list){it, acc->List.Cons(it, acc)}
+fun <ITEM:Any> List<ITEM>.append3(list:List<ITEM> = List.empty()):List<ITEM> = reverse().fold(list){acc, it->List.Cons(it, acc)}
+
 inline val <ITEM:Any> List<ITEM>.size:Int get() = fold(0){acc, _->acc + 1}
 fun <ITEM:Any> List<ITEM>.dropLast2(n:Int = 1):List<ITEM> = foldRightIndexed(List.empty()){ index, it, acc->
     if(index >= n) List.Cons(it, acc) else List.empty()
@@ -121,3 +123,10 @@ fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight2(base:ACC, block:(ITEM, ACC)->ACC):
     is List.Cons -> _tail._foldRightIndexed2(index + 1, block(index, _head, base), block)
 }
 fun <ITEM:Any, ACC:Any> List<ITEM>.foldRightIndexed2(base:ACC, block:(Int, ITEM, ACC)->ACC):ACC = reverse()._foldRightIndexed2(0, base, block)
+
+fun <ITEM:Any> List<List<ITEM>>.flatten():List<ITEM> = when(this){
+    is List.Nil -> this
+    is List.Cons -> drop(1).fold(_head){acc, it->
+        acc.append(it)
+    }
+}

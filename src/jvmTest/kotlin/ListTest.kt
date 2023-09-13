@@ -43,6 +43,12 @@ class ListTest{
         assertEquals(list.foldRightIndexed(""){index, it, acc->"$acc$index$it"}, "031221")
         assertEquals(list.foldRight2(""){it, acc->acc + it}, "321")
         assertEquals(list.foldRightIndexed2(""){index, it, acc->"$acc$index$it"}, "031221")
+        assertEquals(list.append3().head, 1)
+        assertEquals(list.append3().tail.head, 2)
+        assertEquals(list.append3().tail.tail.head, 3)
+        val listlist = List.of(List.of(1,2), List.of(3,4))
+        println("${listlist.flatten()}")
+        assertEquals(listlist.flatten().fold(""){acc,it->"$acc$it"}, "1234")
     }
 
 }
