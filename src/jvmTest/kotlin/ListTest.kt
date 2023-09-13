@@ -5,7 +5,6 @@ class ListTest{
     @Test
     fun test1(){
         val list = List.of(1, 2, 3)
-        println("list $list")
         assertEquals(list.head, 1)
         assertEquals(list.tail.head, 2)
         assertEquals(list.tail.tail.head, 3)
@@ -31,8 +30,10 @@ class ListTest{
         assertEquals(list.append2().head, 1)
         assertEquals(list.append2().tail.head, 2)
         assertEquals(list.append2().tail.tail.head, 3)
+        assertEquals(list.append3().head, 1)
+        assertEquals(list.append3().tail.head, 2)
+        assertEquals(list.append3().tail.tail.head, 3)
         assertEquals(list.dropLast2(2).tail, List.Nil)
-        println("list.dropLast2(2) ${list.dropLast2(1)}")
         assertEquals(list.dropLast2(1).tail.head, 2)
         assertEquals(list.reverse().head, 3)
         assertEquals(list.reverse().tail.head, 2)
@@ -43,12 +44,15 @@ class ListTest{
         assertEquals(list.foldRightIndexed(""){index, it, acc->"$acc$index$it"}, "031221")
         assertEquals(list.foldRight2(""){it, acc->acc + it}, "321")
         assertEquals(list.foldRightIndexed2(""){index, it, acc->"$acc$index$it"}, "031221")
-        assertEquals(list.append3().head, 1)
-        assertEquals(list.append3().tail.head, 2)
-        assertEquals(list.append3().tail.tail.head, 3)
         val listlist = List.of(List.of(1,2), List.of(3,4))
-        println("${listlist.flatten()}")
-        assertEquals(listlist.flatten().fold(""){acc,it->"$acc$it"}, "1234")
+        assertEquals(listlist.flatten().fold(""){acc,it->"$acc-$it"}, "-1-2-3-4")
+        assertEquals(list.map{"${it*2}"}.fold(""){acc, it->"$acc$it"}, "246")
+        assertEquals(list.filter{it != 2}.fold(""){acc, it->"$acc$it"}, "13")
+        assertEquals(List.of(1, 2, 3, 4).filter{it % 2 == 0}.fold(""){acc, it->"$acc$it"}, "24")
+        assertEquals(list.flatMap { List.of(0, it) }.fold(""){ acc, it->"$acc$it"}, "010203")
+        assertEquals(List.of(1, 2, 3, 4).filter2{it % 2 == 0}.fold(""){acc, it->"$acc$it"}, "24")
+        assertEquals(List.of(1, 2, 3).zipWith(List.of(1,1,1)){a, b->a + b}.fold(""){acc, it->"$acc$it"}, "234")
+        assertEquals(List.of(1, 2, 3, 4).hasSubSequence(List.of(2, 3)), true)
     }
 
 }
