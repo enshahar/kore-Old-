@@ -74,22 +74,24 @@ tailrec fun <ITEM:Any> List<ITEM>.dropLastWhile(block:(ITEM)->Boolean):List<ITEM
 @PublishedApi internal tailrec fun <ITEM:Any> List<ITEM>._dropLastWhileIndexed(index:Int, block:(Int, ITEM)->Boolean):List<ITEM>
     = if(this is List.Cons && block(index, _head)) dropLast()._dropLastWhileIndexed(index + 1, block) else this
 fun <ITEM:Any> List<ITEM>.dropLastWhileIndexed(block:(Int, ITEM)->Boolean):List<ITEM> = _dropLastWhileIndexed(0, block)
-tailrec fun <ITEM:Any, ACC:Any> List<ITEM>.fold(acc:ACC, block:(ACC, ITEM)->ACC):ACC = when(this){
-    is List.Nil -> acc
-    is List.Cons -> _tail.fold(block(acc, _head), block)
+tailrec fun <ITEM:Any, ACC:Any> List<ITEM>.fold(base:ACC, block:(ACC, ITEM)->ACC):ACC = when(this){
+    is List.Nil -> base
+    is List.Cons -> _tail.fold(block(base, _head), block)
 }
-fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight2(acc:ACC, block:(ITEM, ACC)->ACC):ACC = fold(acc){acc, it->
-    
+@PublishedApi internal tailrec fun <ITEM:Any, ACC:Any> List<ITEM>._foldIndexed(index:Int, base:ACC, block:(Int, ACC, ITEM)->ACC):ACC = when(this){
+    is List.Nil -> base
+    is List.Cons -> _tail._foldIndexed(index + 1, block(index, base, _head), block)
 }
-fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight(acc:ACC, block:(ITEM, ACC)->ACC):ACC = when(this){
-    is List.Nil -> acc
-    is List.Cons -> block(_head, _tail.foldRight(acc, block))
+fun <ITEM:Any, ACC:Any> List<ITEM>.foldIndexed(base:ACC, block:(Int, ACC, ITEM)->ACC):ACC = _foldIndexed(0, base, block)
+fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight(base:ACC, block:(ITEM, ACC)->ACC):ACC = when(this){
+    is List.Nil -> base
+    is List.Cons -> block(_head, _tail.foldRight(base, block))
 }
-@PublishedApi internal fun <ITEM:Any, ACC:Any> List<ITEM>._foldRightIndexed(index:Int, acc:ACC, block:(Int, ITEM, ACC)->ACC):ACC = when(this){
-    is List.Nil -> acc
-    is List.Cons -> block(index, _head, _tail._foldRightIndexed(index - 1, acc, block))
+@PublishedApi internal fun <ITEM:Any, ACC:Any> List<ITEM>._foldRightIndexed(index:Int, base:ACC, block:(Int, ITEM, ACC)->ACC):ACC = when(this){
+    is List.Nil -> base
+    is List.Cons -> block(index, _head, _tail._foldRightIndexed(index - 1, base, block))
 }
-fun <ITEM:Any, ACC:Any> List<ITEM>.foldRightIndexed(acc:ACC, block:(Int, ITEM, ACC)->ACC):ACC = _foldRightIndexed(size - 1, acc, block)
+fun <ITEM:Any, ACC:Any> List<ITEM>.foldRightIndexed(base:ACC, block:(Int, ITEM, ACC)->ACC):ACC = _foldRightIndexed(size - 1, base, block)
 val <ITEM:Any> List<ITEM>.clone2:List<ITEM> get() = append2()
 fun <ITEM:Any> List<ITEM>.append2(list:List<ITEM> = List.empty()):List<ITEM> = foldRight(list){it, acc->List.Cons(it, acc)}
 inline val <ITEM:Any> List<ITEM>.size:Int get() = fold(0){acc, _->acc + 1}
@@ -109,3 +111,13 @@ inline fun List<Double>.product():Double = fold(0.0){acc, it-> acc * it}
 fun <ITEM:Any> List<ITEM>.reverse():List<ITEM> = fold(List.empty()){acc, it->
     List.Cons(it, acc)
 }
+fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight2(base:ACC, block:(ITEM, ACC)->ACC):ACC = reverse().fold(base){ acc, it->
+    block(it, acc)
+}
+
+
+@PublishedApi internal tailrec fun <ITEM:Any, ACC:Any> List<ITEM>._foldRightIndexed2(index:Int, base:ACC, block:(Int, ITEM, ACC)->ACC):ACC = when(this){
+    is List.Nil -> base
+    is List.Cons -> _tail._foldRightIndexed2(index + 1, block(index, _head, base), block)
+}
+fun <ITEM:Any, ACC:Any> List<ITEM>.foldRightIndexed2(base:ACC, block:(Int, ITEM, ACC)->ACC):ACC = reverse()._foldRightIndexed2(0, base, block)

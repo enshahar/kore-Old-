@@ -36,6 +36,13 @@ class ListTest{
         assertEquals(list.dropLast2(1).tail.head, 2)
         assertEquals(list.reverse().head, 3)
         assertEquals(list.reverse().tail.head, 2)
+        assertEquals(list.reverse().tail.tail.head, 1)
+        assertEquals(list.fold(""){acc, it->acc + it}, "123")
+        assertEquals(list.foldIndexed(""){index, acc, it->"$acc$index$it"}, "011223")
+        assertEquals(list.foldRight(""){it, acc->acc + it}, "321")
+        assertEquals(list.foldRightIndexed(""){index, it, acc->"$acc$index$it"}, "031221")
+        assertEquals(list.foldRight2(""){it, acc->acc + it}, "321")
+        assertEquals(list.foldRightIndexed2(""){index, it, acc->"$acc$index$it"}, "031221")
     }
 
 }
