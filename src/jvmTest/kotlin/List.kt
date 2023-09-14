@@ -170,9 +170,9 @@ fun <ITEM:Any> List<ITEM>.hasSubSequence(sub:List<ITEM>):Boolean = when(this) {
     is List.Nil -> sub is List.Nil
     is List.Cons -> when (sub) {
         is List.Nil -> true
-        is List.Cons -> when (sliceFrom(sub._head)) {
+        is List.Cons -> when (val subList = sliceFrom(sub._head)) {
             is List.Nil -> false
-            is List.Cons -> sub.isMatchedFirst(sliceFrom(sub._head))
+            is List.Cons -> sub.isMatchedFirst(subList)
         }
     }
 }

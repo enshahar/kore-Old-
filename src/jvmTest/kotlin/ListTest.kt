@@ -52,7 +52,13 @@ class ListTest{
         assertEquals(list.flatMap { List.of(0, it) }.fold(""){ acc, it->"$acc$it"}, "010203")
         assertEquals(List.of(1, 2, 3, 4).filter2{it % 2 == 0}.fold(""){acc, it->"$acc$it"}, "24")
         assertEquals(List.of(1, 2, 3).zipWith(List.of(1,1,1)){a, b->a + b}.fold(""){acc, it->"$acc$it"}, "234")
+        assertEquals(List.of(1, 2, 3, 4).hasSubSequence(List.of(2)), true)
         assertEquals(List.of(1, 2, 3, 4).hasSubSequence(List.of(2, 3)), true)
+        assertEquals(List.of(1, 2, 3, 4).hasSubSequence(List.of(2, 3,4)), true)
+        assertEquals(List.of(1, 2, 3, 4).hasSubSequence(List.of(1,2, 3)), true)
+        assertEquals(List.of(1, 2, 3, 4).hasSubSequence(List.of(3, 4)), true)
+        assertEquals(List.of(1, 2, 3, 4).hasSubSequence(List.of(1, 2, 3, 4)), true)
+        assertEquals(List.of(1, 2, 3, 4).hasSubSequence(List.of(1, 3)), false)
     }
 
 }
