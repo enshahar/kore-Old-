@@ -19,13 +19,18 @@ inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.map(block:(VALUE)->OTHER):Option
     is Option.None->this
     is Option.Some->Option(block(value))
 }
-inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.flatMap(block:(VALUE)->Option<OTHER>):Option<OTHER> = when(this){
-    is Option.None->this
-    is Option.Some->block(value)
-}
 inline fun <VALUE:Any> Option<VALUE>.getOrElse(block:()->VALUE):VALUE = when(this){
     is Option.None->block()
     is Option.Some->value
+}
+inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.flatMap2(block:(VALUE)->Option<OTHER>):Option<OTHER> = map(block).getOrElse { Option() }
+inline fun <VALUE:Any> Option<VALUE>.orElse2(block:()->Option<VALUE>):Option<VALUE> = map{Option(it)}.getOrElse(block)
+
+inline fun <VALUE:Any> Option<VALUE>.filter2(block:(VALUE)->Boolean):Option<VALUE> = flatMap{if(block(it)) Option(it) else Option()}
+
+inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.flatMap(block:(VALUE)->Option<OTHER>):Option<OTHER> = when(this){
+    is Option.None->this
+    is Option.Some->block(value)
 }
 inline fun <VALUE:Any> Option<VALUE>.orElse(block:()->Option<VALUE>):Option<VALUE> = when(this){
     is Option.None->block()
@@ -43,7 +48,7 @@ inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.mapF(block:(VALUE)->OTHER):Optio
 inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.flatMapF(block:(VALUE)->Option<OTHER>):Option<OTHER> = fold({Option()}){block(it.value)}
 inline fun <VALUE:Any> Option<VALUE>.getOrElseF(block:()->VALUE):VALUE = fold(block){it.value}
 inline fun <VALUE:Any> Option<VALUE>.orElseF(block:()->Option<VALUE>):Option<VALUE> = fold(block){it}
-inline fun <VALUE:Any> Option<VALUE>.filterF(block:(VALUE)->Boolean):Option<VALUE> = fold({Option()}){if(block(it.value)) this else Option()}
+inline fun <VALUE:Any> Option<VALUE>.filterF(block:(VALUE)->Boolean):Option<VALUE> = flatMapF {if(block(it))Option(it)else Option()  }
 inline fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2(other:Option<OTHER>, block:(VALUE, OTHER)->RETURN):Option<RETURN> = when(this){
     is Option.None->Option()
     is Option.Some->when(other){
