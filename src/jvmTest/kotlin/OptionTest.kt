@@ -14,6 +14,6 @@ class OptionTest {
         assertEquals(List.of(1.0,2.0,3.0,4.0).variance().getOrElseF { 0.0 }, 1.25)
         assertEquals(option.map2(Option(2)){a, b->a + b}.getOrElse { 0 }, 5)
         assertEquals(option.map2F(Option(2)){a, b->a + b}.getOrElse { 0 }, 5)
-        assertEquals(List.of(Option(1),Option<Int>(),Option(3)).sequence().getOrElse { List.empty() }.toString(), "1")
+        assertEquals(List.of(Option(1),Option<Int>(),Option(3)).sequence().getOrElse { List.empty() }.toString(), "Cons(_head=1, _tail=Cons(_head=3, _tail=Nil))")
     }
 }

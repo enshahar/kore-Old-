@@ -25,6 +25,6 @@ class TreeTest {
         assertEquals(4 in tree2, true)
         assertEquals(5 in tree2, true)
         assertEquals(2 in tree2, false)
-
+        assertEquals( 5 in tree2, true)
     }
 }
