@@ -1,3 +1,4 @@
+import List.Cons
 import kotlin.collections.List as KList
 import kotlin.math.pow
 
@@ -23,11 +24,6 @@ inline fun <VALUE:Any> Option<VALUE>.getOrElse(block:()->VALUE):VALUE = when(thi
     is Option.None->block()
     is Option.Some->value
 }
-inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.flatMap2(block:(VALUE)->Option<OTHER>):Option<OTHER> = map(block).getOrElse { Option() }
-inline fun <VALUE:Any> Option<VALUE>.orElse2(block:()->Option<VALUE>):Option<VALUE> = map{Option(it)}.getOrElse(block)
-
-inline fun <VALUE:Any> Option<VALUE>.filter2(block:(VALUE)->Boolean):Option<VALUE> = flatMap{if(block(it)) Option(it) else Option()}
-
 inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.flatMap(block:(VALUE)->Option<OTHER>):Option<OTHER> = when(this){
     is Option.None->this
     is Option.Some->block(value)
@@ -40,35 +36,27 @@ inline fun <VALUE:Any> Option<VALUE>.filter(block:(VALUE)->Boolean):Option<VALUE
     is Option.None->this
     is Option.Some->if(block(value)) this else Option()
 }
-inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.fold(noneBlock:()->OTHER, someBlock:(Option.Some<VALUE>)->OTHER):OTHER = when(this){
-    is Option.None->noneBlock()
-    is Option.Some->someBlock(this)
-}
-inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.mapF(block:(VALUE)->OTHER):Option<OTHER> = fold({Option()}){Option(block(it.value))}
-inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.flatMapF(block:(VALUE)->Option<OTHER>):Option<OTHER> = fold({Option()}){block(it.value)}
-inline fun <VALUE:Any> Option<VALUE>.getOrElseF(block:()->VALUE):VALUE = fold(block){it.value}
-inline fun <VALUE:Any> Option<VALUE>.orElseF(block:()->Option<VALUE>):Option<VALUE> = fold(block){it}
-inline fun <VALUE:Any> Option<VALUE>.filterF(block:(VALUE)->Boolean):Option<VALUE> = flatMapF {if(block(it))Option(it)else Option()  }
-inline fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2(other:Option<OTHER>, block:(VALUE, OTHER)->RETURN):Option<RETURN> = when(this){
-    is Option.None->Option()
-    is Option.Some->when(other){
-        is Option.None->Option()
-        is Option.Some->Option(block(value, other.value))
-    }
-}
-inline fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2F(other:Option<OTHER>, block:(VALUE, OTHER)->RETURN):Option<RETURN>
-= fold({Option()}){when(other){
-        is Option.None->Option()
-        is Option.Some->Option(block(it.value, other.value))
-    }
-}
+inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.flatMapF(block:(VALUE)->Option<OTHER>):Option<OTHER> = map(block).getOrElse { Option() }
+inline fun <VALUE:Any> Option<VALUE>.orElseF(block:()->Option<VALUE>):Option<VALUE> = map{Option(it)}.getOrElse(block)
+inline fun <VALUE:Any> Option<VALUE>.filterF(block:(VALUE)->Boolean):Option<VALUE> = flatMap{if(block(it)) Option(it) else Option()}
 
-inline fun <VALUE:Any> List<Option<VALUE>>.sequence():Option<List<VALUE>> = Option(flatMap{
-    when(it){
-        is Option.None->List.Nil
-        is Option.Some->List.Cons(it.value, List.Nil)
-    }
-})
+inline fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2(other:Option<OTHER>, block:(VALUE, OTHER)->RETURN):Option<RETURN>
+    = if((this is Option.Some) && (other is Option.Some)) Option(block(value, other.value)) else Option()
+inline fun <VALUE:Any, SECOND:Any, THIRD:Any, RETURN:Any> Option<VALUE>.map3(second:Option<SECOND>, third:Option<THIRD>, block:(VALUE, SECOND, THIRD)->RETURN):Option<RETURN>
+    = if((this is Option.Some) && (second is Option.Some) && (third is Option.Some)) Option(block(value, second.value, third.value)) else Option()
+inline fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2F(other:Option<OTHER>, block:(VALUE, OTHER)->RETURN):Option<RETURN>
+    = flatMap{v1->other.map {v2->block(v1, v2)}}
+inline fun <VALUE:Any, SECOND:Any, THIRD:Any, RETURN:Any> Option<VALUE>.map3F(second:Option<SECOND>, third:Option<THIRD>, block:(VALUE, SECOND, THIRD)->RETURN):Option<RETURN>
+    = flatMap{v1->second.flatMap {v2->third.map {v3->block(v1, v2, v3)}}}
+inline fun <VALUE:Any> List<Option<VALUE>>.sequence():Option<List<VALUE>>
+   = reverse().fold(Option()){acc, it->it.map2(acc, ::Cons)}
+inline fun <VALUE:Any> List<Option<VALUE>>.sequenceT():Option<List<VALUE>>
+    = traverse {Option(it)}
+fun <VALUE:Any, OTHER:Any> List<Option<VALUE>>.traverse(block:(VALUE)->Option<OTHER>):Option<List<OTHER>>
+    = reverse().fold(Option()){acc, it->it.map2(acc){a, b->
+        block(a).map{Cons(it, b)}.getOrElse { b }
+    } }
+
 inline fun KList<Double>.variance():Option<Double> = if(isEmpty()) Option() else{
     val avg = average()
     Option(map{(it - avg).pow(2)}.average())
@@ -80,4 +68,7 @@ fun List<Double>.average():Option<Double> = when(val s = size){
 fun List<Double>.variance():Option<Double> = when(val avg = average()){
     is Option.None->avg
     is Option.Some->map{(it - avg.value).pow(2)}.average()
+}
+fun List<Double>.varianceK():Option<Double> = average().flatMap {
+    map { item -> (item - it).pow(2) }.average()
 }

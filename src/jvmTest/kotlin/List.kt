@@ -4,11 +4,8 @@ sealed class List<out ITEM:Any>{
     data object Nil:List<Nothing>()
     data class Cons<out ITEM:Any>(@PublishedApi internal val _head:ITEM, @PublishedApi internal val _tail:List<ITEM>):List<ITEM>()
     companion object{
-        private tailrec fun <ITEM:Any> List<ITEM>.of(items: kotlin.collections.List<ITEM>): List<ITEM>
-            = if(items.isEmpty()) this else Cons(items.last(), this).of(items.dropLast(1))
-        fun <ITEM:Any> of2(vararg items:ITEM):List<ITEM> = Nil.of(items.toList())
-        fun <ITEM:Any> of(vararg items:ITEM):List<ITEM> = items.foldRight(empty(), ::Cons)
-        fun <ITEM:Any> empty():List<ITEM> = Nil
+        operator fun <ITEM:Any> invoke(vararg items:ITEM):List<ITEM> = items.foldRight(invoke(), ::Cons)
+        operator fun <ITEM:Any> invoke():List<ITEM> = Nil
     }
 //    val length:Int = when(this){
 //        is Nil -> 0
@@ -41,7 +38,7 @@ inline fun <ITEM:Any> List<ITEM>.addFirst(item: ITEM):List<ITEM> = when(this){
 //        is List.Cons->_tail.drop(n - 1)
 //    }
 //}
-tailrec fun <ITEM:Any> List<ITEM>.drop(n:Int):List<ITEM> =
+tailrec fun <ITEM:Any> List<ITEM>.drop(n:Int = 1):List<ITEM> =
     if(n > 0 && this is List.Cons) _tail.drop(n - 1) else this
 //tailrec fun <ITEM:Any> List<ITEM>.dropWhile(block:(ITEM)->Boolean):List<ITEM> = when(this){
 //    is List.Nil -> List.Nil
@@ -59,20 +56,20 @@ tailrec fun <ITEM:Any> List<ITEM>.dropWhile(block:(ITEM)->Boolean):List<ITEM> =
 fun <ITEM:Any> List<ITEM>.dropWhileIndexed(block:(Int, ITEM)->Boolean):List<ITEM> = _dropWhileIndexed(0, block)
 inline fun <ITEM:Any> List<ITEM>.drop2(n:Int):List<ITEM> = _dropWhileIndexed(0){index, _->index < n}
 val <ITEM:Any> List<ITEM>.clone:List<ITEM> get() = append()
-fun <ITEM:Any> List<ITEM>.append3(list:List<ITEM> = List.empty()):List<ITEM> = when(this){
+fun <ITEM:Any> List<ITEM>.append3(list:List<ITEM> = List.invoke()):List<ITEM> = when(this){
     is List.Nil -> list
     is List.Cons -> List.Cons(_head, _tail.append(list))
 }
-fun <ITEM:Any> List<ITEM>.append2(list:List<ITEM> = List.empty()):List<ITEM> = foldRight(list){it, acc->List.Cons(it, acc)}
-fun <ITEM:Any> List<ITEM>.append(list:List<ITEM> = List.empty()):List<ITEM> = reverse().fold(list){acc, it->List.Cons(it, acc)}
-fun <ITEM:Any, OTHER:Any> List<ITEM>.map(block:(ITEM)->OTHER):List<OTHER> = reverse().fold(List.empty()){acc, it->
+fun <ITEM:Any> List<ITEM>.append2(list:List<ITEM> = List.invoke()):List<ITEM> = foldRight(list){ it, acc->List.Cons(it, acc)}
+fun <ITEM:Any> List<ITEM>.append(list:List<ITEM> = List.invoke()):List<ITEM> = reverse().fold(list){ acc, it->List.Cons(it, acc)}
+fun <ITEM:Any, OTHER:Any> List<ITEM>.map(block:(ITEM)->OTHER):List<OTHER> = reverse().fold(List.invoke()){ acc, it->
     List.Cons(block(it), acc)
 }
-fun <ITEM:Any> List<ITEM>.filter(block:(ITEM)->Boolean):List<ITEM> = reverse().fold(List.empty()){acc, it->
+fun <ITEM:Any> List<ITEM>.filter(block:(ITEM)->Boolean):List<ITEM> = reverse().fold(List.invoke()){ acc, it->
     if(block(it)) List.Cons(it, acc) else acc
 }
 fun <ITEM:Any> List<ITEM>.filter2(block:(ITEM)->Boolean):List<ITEM> = flatMap {
-    if(block(it)) List.of(it) else List.empty()
+    if(block(it)) List.invoke(it) else List.invoke()
 }
 fun <ITEM:Any, OTHER:Any> List<ITEM>.flatMap(block:(ITEM)->List<OTHER>):List<OTHER> = map(block).flatten()
 fun <ITEM:Any> List<ITEM>.dropLast():List<ITEM> = when(this){
@@ -117,8 +114,8 @@ fun <ITEM:Any, ACC:Any> List<ITEM>.foldRight2(base:ACC, block:(ITEM, ACC)->ACC):
 fun <ITEM:Any, ACC:Any> List<ITEM>.foldRightIndexed2(base:ACC, block:(Int, ITEM, ACC)->ACC):ACC = _foldRightIndexed2(size - 1, base, block)
 
 inline val <ITEM:Any> List<ITEM>.size:Int get() = fold(0){acc, _->acc + 1}
-fun <ITEM:Any> List<ITEM>.dropLast2(n:Int = 1):List<ITEM> = foldRightIndexed(List.empty()){ index, it, acc->
-    if(index >= n) List.Cons(it, acc) else List.empty()
+fun <ITEM:Any> List<ITEM>.dropLast2(n:Int = 1):List<ITEM> = foldRightIndexed(List.invoke()){ index, it, acc->
+    if(index >= n) List.Cons(it, acc) else List.invoke()
 }
 inline fun List<Int>.sum():Int = fold(0){acc, it-> acc + it}
 inline fun List<Long>.sum():Long = fold(0L){acc, it-> acc + it}
@@ -130,7 +127,7 @@ inline fun List<Long>.product():Long = fold(0L){acc, it-> acc * it}
 inline fun List<Float>.product():Float = fold(0.0f){acc, it-> acc * it}
 inline fun List<Double>.product():Double = fold(0.0){acc, it-> acc * it}
 
-fun <ITEM:Any> List<ITEM>.reverse():List<ITEM> = fold(List.empty()){acc, it->
+fun <ITEM:Any> List<ITEM>.reverse():List<ITEM> = fold(List.invoke()){ acc, it->
     List.Cons(it, acc)
 }
 
@@ -149,18 +146,18 @@ fun <ITEM:Any> List<List<ITEM>>.flatten():List<ITEM> = when(this){
 }
 fun <ITEM:Any, OTHER:Any, RESULT:Any> List<ITEM>.zipWith(other:List<OTHER>, block:(ITEM, OTHER)->RESULT):List<RESULT>{
      return if(other.size > size){
-         reverse()._zipWithFold(other.dropLast(other.size - size).reverse(), List.empty(), block)
+         reverse()._zipWithFold(other.dropLast(other.size - size).reverse(), List.invoke(), block)
      }else{
-         other.reverse()._zipWithFold(dropLast(size - other.size).reverse(), List.empty(), {a,b->block(b, a)})
+         other.reverse()._zipWithFold(dropLast(size - other.size).reverse(), List.invoke(), { a, b->block(b, a)})
      }
 }
 tailrec fun <ITEM:Any> List<ITEM>.sliceFrom(item:ITEM):List<ITEM> = when(this){
     is List.Nil -> List.Nil
     is List.Cons -> if(_head == item) this else _tail.sliceFrom(item)
 }
-tailrec fun <ITEM:Any> List<ITEM>.isMatchedFirst(target:List<ITEM>):Boolean = when(this) {
+tailrec fun <ITEM:Any> List<ITEM>.startsWith(target:List<ITEM>):Boolean = when(this) {
     is List.Nil -> true
-    is List.Cons ->if(target is List.Cons && _head == target._head) _tail.isMatchedFirst(target._tail) else false
+    is List.Cons ->if(target is List.Cons && _head == target._head) _tail.startsWith(target._tail) else false
 //    when(target){
 //        is List.Nil -> false
 //        is List.Cons -> if(_head != target._head) false else _tail.isSameItems(target._tail)
@@ -172,7 +169,7 @@ fun <ITEM:Any> List<ITEM>.hasSubSequence(sub:List<ITEM>):Boolean = when(this) {
         is List.Nil -> true
         is List.Cons -> when (val subList = sliceFrom(sub._head)) {
             is List.Nil -> false
-            is List.Cons -> sub.isMatchedFirst(subList)
+            is List.Cons -> sub.startsWith(subList)
         }
     }
 }
