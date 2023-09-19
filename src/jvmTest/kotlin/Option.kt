@@ -15,6 +15,11 @@ sealed class Option<out VALUE:Any> {
     }
     data object None:Option<Nothing>()
     data class  Some<out VALUE:Any>(val value: VALUE):Option<VALUE>()
+
+    inline fun getOrThrow():VALUE = when(this){
+        is None->throw Throwable()
+        is Some->value
+    }
 }
 inline fun <VALUE:Any, OTHER:Any> Option<VALUE>.map(block:(VALUE)->OTHER):Option<OTHER> = when(this){
     is Option.None->this
@@ -48,14 +53,31 @@ inline fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2F(other:Option<O
     = flatMap{v1->other.map {v2->block(v1, v2)}}
 inline fun <VALUE:Any, SECOND:Any, THIRD:Any, RETURN:Any> Option<VALUE>.map3F(second:Option<SECOND>, third:Option<THIRD>, block:(VALUE, SECOND, THIRD)->RETURN):Option<RETURN>
     = flatMap{v1->second.flatMap {v2->third.map {v3->block(v1, v2, v3)}}}
+
+fun <VALUE:Any> List<Option<VALUE>>._sequence(acc:Option<List<VALUE>>):Option<List<VALUE>>
+    = when(this){
+    is List.Nil -> acc
+    is Cons -> when(val v = _head){
+        is Option.None->Option()
+        is Option.Some->v.map2(_tail._sequence(acc), ::Cons)
+    }
+}
 inline fun <VALUE:Any> List<Option<VALUE>>.sequence():Option<List<VALUE>>
-   = reverse().fold(Option()){acc, it->it.map2(acc, ::Cons)}
+    = _sequence(Option(List()))
+   //= reverse().fold(Option(List())){acc, it->it.map2(acc, ::Cons)}
 inline fun <VALUE:Any> List<Option<VALUE>>.sequenceT():Option<List<VALUE>>
-    = traverse {Option(it)}
-fun <VALUE:Any, OTHER:Any> List<Option<VALUE>>.traverse(block:(VALUE)->Option<OTHER>):Option<List<OTHER>>
-    = reverse().fold(Option()){acc, it->it.map2(acc){a, b->
-        block(a).map{Cons(it, b)}.getOrElse { b }
-    } }
+    = traverse{it}
+fun <VALUE:Any, OTHER:Any> List<VALUE>.traverse(block:(VALUE)->Option<OTHER>):Option<List<OTHER>>
+    = when(this){
+        is List.Nil -> Option(List())
+        is Cons ->when(val v = block(_head)){
+            is Option.None->Option()
+            is Option.Some->v.map2(_tail.traverse(block), ::Cons)
+        } as Option<List<OTHER>>
+    }
+fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2bind(other:Option<OTHER>, block:(VALUE, OTHER)->RETURN):Option<RETURN>
+ = Option.catches{ block(getOrThrow(), other.getOrThrow()) }
+
 
 inline fun KList<Double>.variance():Option<Double> = if(isEmpty()) Option() else{
     val avg = average()

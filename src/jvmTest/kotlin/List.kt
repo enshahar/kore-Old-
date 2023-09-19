@@ -62,7 +62,7 @@ fun <ITEM:Any> List<ITEM>.append3(list:List<ITEM> = List.invoke()):List<ITEM> = 
 }
 fun <ITEM:Any> List<ITEM>.append2(list:List<ITEM> = List.invoke()):List<ITEM> = foldRight(list){ it, acc->List.Cons(it, acc)}
 fun <ITEM:Any> List<ITEM>.append(list:List<ITEM> = List.invoke()):List<ITEM> = reverse().fold(list){ acc, it->List.Cons(it, acc)}
-fun <ITEM:Any, OTHER:Any> List<ITEM>.map(block:(ITEM)->OTHER):List<OTHER> = reverse().fold(List.invoke()){ acc, it->
+fun <ITEM:Any, OTHER:Any> List<ITEM>.map(block:(ITEM)->OTHER):List<OTHER> = reverse().fold(List()){ acc, it->
     List.Cons(block(it), acc)
 }
 fun <ITEM:Any> List<ITEM>.filter(block:(ITEM)->Boolean):List<ITEM> = reverse().fold(List.invoke()){ acc, it->
@@ -72,6 +72,16 @@ fun <ITEM:Any> List<ITEM>.filter2(block:(ITEM)->Boolean):List<ITEM> = flatMap {
     if(block(it)) List.invoke(it) else List.invoke()
 }
 fun <ITEM:Any, OTHER:Any> List<ITEM>.flatMap(block:(ITEM)->List<OTHER>):List<OTHER> = map(block).flatten()
+
+tailrec fun <ITEM:Any, OTHER:Any> List<ITEM>._flatMap(acc:List<OTHER>, block:(ITEM)->List<OTHER>):List<OTHER>
+    = when(this){
+        is List.Nil -> acc
+        is List.Cons -> when(val v = block(_head)){
+            is List.Nil->acc
+            is List.Cons->_tail._flatMap(acc.append(v), block)
+        }
+    }
+fun <ITEM:Any, OTHER:Any> List<ITEM>.flatMap2(block:(ITEM)->List<OTHER>):List<OTHER> = _flatMap(List(), block)
 fun <ITEM:Any> List<ITEM>.dropLast():List<ITEM> = when(this){
     is List.Nil -> this
     is List.Cons -> if(_tail is List.Nil) List.Nil else List.Cons(_head, _tail.dropLast())
