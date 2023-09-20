@@ -54,25 +54,25 @@ inline fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2F(other:Option<O
 inline fun <VALUE:Any, SECOND:Any, THIRD:Any, RETURN:Any> Option<VALUE>.map3F(second:Option<SECOND>, third:Option<THIRD>, block:(VALUE, SECOND, THIRD)->RETURN):Option<RETURN>
     = flatMap{v1->second.flatMap {v2->third.map {v3->block(v1, v2, v3)}}}
 
-fun <VALUE:Any> List<Option<VALUE>>._sequence(acc:Option<List<VALUE>>):Option<List<VALUE>>
+fun <VALUE:Any> List<Option<VALUE>>._sequenceOption(acc:Option<List<VALUE>>):Option<List<VALUE>>
     = when(this){
     is List.Nil -> acc
     is Cons -> when(val v = _head){
         is Option.None->Option()
-        is Option.Some->v.map2(_tail._sequence(acc), ::Cons)
+        is Option.Some->v.map2(_tail._sequenceOption(acc), ::Cons)
     }
 }
-inline fun <VALUE:Any> List<Option<VALUE>>.sequence():Option<List<VALUE>> = _sequence(Option(List()))
+inline fun <VALUE:Any> List<Option<VALUE>>.sequenceOption():Option<List<VALUE>> = _sequenceOption(Option(List()))
 
    //= reverse().fold(Option(List())){acc, it->it.map2(acc, ::Cons)}
-inline fun <VALUE:Any> List<Option<VALUE>>.sequenceT():Option<List<VALUE>>
-    = traverse{it}
-fun <VALUE:Any, OTHER:Any> List<VALUE>.traverse(block:(VALUE)->Option<OTHER>):Option<List<OTHER>>
+inline fun <VALUE:Any> List<Option<VALUE>>.sequenceOptionT():Option<List<VALUE>>
+    = traverseOption{it}
+fun <VALUE:Any, OTHER:Any> List<VALUE>.traverseOption(block:(VALUE)->Option<OTHER>):Option<List<OTHER>>
     = when(this){
         is List.Nil -> Option(List())
         is Cons ->when(val v = block(_head)){
             is Option.None->Option()
-            is Option.Some->v.map2(_tail.traverse(block), ::Cons)
+            is Option.Some->v.map2(_tail.traverseOption(block), ::Cons)
         }
     }
 fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2bind(other:Option<OTHER>, block:(VALUE, OTHER)->RETURN):Option<RETURN>
