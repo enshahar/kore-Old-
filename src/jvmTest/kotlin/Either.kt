@@ -33,16 +33,41 @@ fun <LEFT:Any, RIGHT:Any> Either<LEFT, RIGHT>.orElse(block:()->Either<LEFT, RIGH
 fun <LEFT:Any, RIGHT1:Any, RIGHT2:Any, OTHER:Any> Either<LEFT, RIGHT1>.map2(other:Either<LEFT, RIGHT2>, block:(RIGHT1, RIGHT2)->OTHER):Either<LEFT, OTHER>
     = flatMap { v1->other.map {v2->block(v1, v2)} }
 fun <LEFT:Any, RIGHT1:Any, RIGHT2:Any, OTHER:Any> Either<LEFT, RIGHT1>.map2Log(other:Either<LEFT, RIGHT2>, block:(RIGHT1, RIGHT2)->OTHER):Either<List<LEFT>, OTHER>
-        = when(this){
-            is Either.Left->when(other){
-                is Either.Left->Either.Left(List(value, other.value))
-                is Either.Right->Either.Left(List(value))
+    = when(this){
+        is Either.Left->when(other){
+            is Either.Left->Either.Left(List(value, other.value))
+            is Either.Right->Either.Left(List(value))
+        }
+        is Either.Right->when(other){
+            is Either.Left->Either.Left(List(other.value))
+            is Either.Right->Either.Right(block(value, other.value))
+        }
+    }
+inline fun <LEFT:Any, RIGHT:Any> List<Either<LEFT, RIGHT>>.sequenceEitherLog():Either<List<LEFT>, List<RIGHT>>
+= traverseEitherLog{
+    when(it){
+        is Either.Left ->Either.Left(it.value)
+        is Either.Right ->Either.Right(it.value)
+    }
+}
+fun <VALUE:Any, LEFT:Any, RIGHT:Any> List<VALUE>.traverseEitherLog(block:(VALUE)->Either<LEFT, RIGHT>):Either<List<LEFT>, List<RIGHT>>
+ = when(this){
+    is List.Nil -> Either.right(List())
+    is Cons ->{
+        val b = _tail.traverseEitherLog(block)
+        when(val a = block(_head)){
+            is Either.Left->when(b){
+                is Either.Left->Either.Left(Cons(a.value, b.value))
+                is Either.Right->Either.Left(List(a.value))
             }
-            is Either.Right->when(other){
-                is Either.Left->Either.Left(List(other.value))
-                is Either.Right->Either.Right(block(value, other.value))
+            is Either.Right->when(b){
+                is Either.Left->Either.Left(b.value)
+                is Either.Right->Either.Right(Cons(a.value, b.value))
             }
         }
+
+    }
+}
 fun <VALUE:Any, LEFT:Any, RIGHT:Any> List<VALUE>.traverseEither(block:(VALUE)->Either<LEFT, RIGHT>):Either<LEFT, List<RIGHT>>
     = when(this){
     is List.Nil -> Either.right(List())
