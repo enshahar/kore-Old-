@@ -65,7 +65,6 @@ fun <VALUE:Any, LEFT:Any, RIGHT:Any> List<VALUE>.traverseEitherLog(block:(VALUE)
                 is Either.Right->Either.Right(Cons(a.value, b.value))
             }
         }
-
     }
 }
 fun <VALUE:Any, LEFT:Any, RIGHT:Any> List<VALUE>.traverseEither(block:(VALUE)->Either<LEFT, RIGHT>):Either<LEFT, List<RIGHT>>
