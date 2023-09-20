@@ -62,8 +62,8 @@ fun <VALUE:Any> List<Option<VALUE>>._sequence(acc:Option<List<VALUE>>):Option<Li
         is Option.Some->v.map2(_tail._sequence(acc), ::Cons)
     }
 }
-inline fun <VALUE:Any> List<Option<VALUE>>.sequence():Option<List<VALUE>>
-    = _sequence(Option(List()))
+inline fun <VALUE:Any> List<Option<VALUE>>.sequence():Option<List<VALUE>> = _sequence(Option(List()))
+
    //= reverse().fold(Option(List())){acc, it->it.map2(acc, ::Cons)}
 inline fun <VALUE:Any> List<Option<VALUE>>.sequenceT():Option<List<VALUE>>
     = traverse{it}
@@ -73,7 +73,7 @@ fun <VALUE:Any, OTHER:Any> List<VALUE>.traverse(block:(VALUE)->Option<OTHER>):Op
         is Cons ->when(val v = block(_head)){
             is Option.None->Option()
             is Option.Some->v.map2(_tail.traverse(block), ::Cons)
-        } as Option<List<OTHER>>
+        }
     }
 fun <VALUE:Any, OTHER:Any, RETURN:Any> Option<VALUE>.map2bind(other:Option<OTHER>, block:(VALUE, OTHER)->RETURN):Option<RETURN>
  = Option.catches{ block(getOrThrow(), other.getOrThrow()) }

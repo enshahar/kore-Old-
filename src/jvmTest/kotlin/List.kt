@@ -77,7 +77,7 @@ tailrec fun <ITEM:Any, OTHER:Any> List<ITEM>._flatMap(acc:List<OTHER>, block:(IT
     = when(this){
         is List.Nil -> acc
         is List.Cons -> when(val v = block(_head)){
-            is List.Nil->acc
+            is List.Nil->_tail._flatMap(acc, block)
             is List.Cons->_tail._flatMap(acc.append(v), block)
         }
     }
