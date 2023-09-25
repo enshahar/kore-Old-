@@ -1,4 +1,4 @@
-sealed class Value<T>{
+sealed class Value<out T>:()->T{
     companion object{
         operator fun <T> invoke(value:T): Value<T> = Evaluated(value)
         operator fun <T> invoke(block:()->T): Value<T> = Unevaluated(block)
@@ -10,5 +10,4 @@ sealed class Value<T>{
         private var memo:T? = null
         override fun invoke(): T  = memo ?: block().also { memo = it }
     }
-    abstract operator fun invoke():T
 }
