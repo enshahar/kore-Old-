@@ -1,3 +1,5 @@
+package kore.fd
+
 sealed class Value<T>{
     companion object{
         operator fun <T> invoke(value:T): Value<T> = Evaluated(value)
