@@ -50,9 +50,9 @@ fun <ITEM:Any> Stream<ITEM>.takeWhile(block:(ITEM)->Boolean): Stream<ITEM>
 //    is Stream.Cons->if(block(_head())) Stream(_head) { _tail().takeWhile(block) } else Stream()
 //}
 
-val <ITEM:Any> Stream<ITEM>.headOption: Option<ITEM>
+val <ITEM:Any> Stream<ITEM>.headOption: FOption<ITEM>
     get()
-    = foldRight({ Option() }){ it, _-> Option(it) }
+    = foldRight({ FOption() }){ it, _-> FOption(it) }
 //= when(this){
 //    is Stream.Empty->Option()
 //    is Stream.Cons->Option(_head())

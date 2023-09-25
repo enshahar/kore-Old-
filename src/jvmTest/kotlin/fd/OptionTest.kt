@@ -6,18 +6,17 @@ import kotlin.test.assertEquals
 class OptionTest {
     @Test
     fun test1(){
-//        val option = Option(3)
-//        assertEquals(option.map{it *2}.getOrElse { 0 }, 6)
-//        assertEquals(option.flatMap { Option(it * 2) }.getOrElse { 0 }, 6)
-//        assertEquals(option.filter { it > 1}.getOrElse { 0 }, 3)
-//        assertEquals(option.filterF { it < 1 }.getOrElse { 0 }, 0)
-//        assertEquals(listOf(1.0,2.0,3.0,4.0).variance().getOrElse { 0.0 }, 1.25)
-//        assertEquals(option.map2(Option(2)){ a, b->a + b}.getOrElse { 0 }, 5)
-//        assertEquals(option.map2F(Option(2)){ a, b->a + b}.getOrElse { 0 }, 5)
-//        assertEquals(FList(Option(1),Option(3)).sequenceOption().toString(), "Some(value=Cons(_head=1, _tail=Cons(_head=3, _tail=Nil)))")
-//        assertEquals(FList(Option(1), Option(), Option(3)).sequenceOption().toString(), "None")
-//        println("-------")
-//        assertEquals(FList(Option(1), Option(), Option(3)).sequenceOptionT().toString(), "None")
-//        assertEquals(FList(Option(1),Option(3)).sequenceOptionT().toString(), "Some(value=Cons(_head=1, _tail=Cons(_head=3, _tail=Nil)))")
+        val option = FOption(3)
+        assertEquals(option.map{it *2}.getOrElse { 0 }, 6)
+        assertEquals(option.flatMap { FOption(it * 2) }.getOrElse { 0 }, 6)
+        assertEquals(option.filter { it > 1}.getOrElse { 0 }, 3)
+        assertEquals(option.filterF { it < 1 }.getOrElse { 0 }, 0)
+        assertEquals(listOf(1.0,2.0,3.0,4.0).variance().getOrElse { 0.0 }, 1.25)
+        assertEquals(option.map2(FOption(2)){ a, b->a + b}.getOrElse { 0 }, 5)
+        assertEquals(option.map2F(FOption(2)){ a, b->a + b}.getOrElse { 0 }, 5)
+        assertEquals(FList(FOption(1),FOption(3)).sequence().toString(), "Some(value=Cons(head=1, tail=Cons(head=3, tail=Nil)))")
+        assertEquals(FList(FOption(1), FOption(), FOption(3)).sequence().toString(), "None")
+        assertEquals(FList(FOption(1), FOption(), FOption(3)).sequenceT().toString(), "None")
+        assertEquals(FList(FOption(1),FOption(3)).sequenceT().toString(), "Some(value=Cons(head=1, tail=Cons(head=3, tail=Nil)))")
     }
 }
