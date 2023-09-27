@@ -52,7 +52,7 @@ inline fun <ITEM:Any, OTHER:Any> FList<ITEM>.flatMap(noinline block:(ITEM)-> FLi
 }
 fun <ITEM:Any> FList<FList<ITEM>>.flatten(): FList<ITEM> = foldRight(FList()){it, acc->it.foldRight(acc, ::Cons)}
 //** append-----------------------------------------------------------------*/
-inline fun <ITEM:Any> FList<ITEM>.append(list: FList<ITEM> = FList.invoke()): FList<ITEM> = foldRight(list, ::Cons)
+inline fun <ITEM:Any> FList<ITEM>.append(list: FList<ITEM> = FList()): FList<ITEM> = foldRight(list, ::Cons)
 inline fun <ITEM:Any> FList<ITEM>.copy():FList<ITEM> = append()
 inline operator fun <ITEM:Any> FList<ITEM>.plus(list:FList<ITEM>):FList<ITEM> = append(list)
 //** drop----------------------------------------------------------*/
