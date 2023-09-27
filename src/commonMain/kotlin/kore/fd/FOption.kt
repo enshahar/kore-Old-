@@ -52,10 +52,10 @@ inline fun <VALUE:Any, SECOND:Any, THIRD:Any, RETURN:Any> FOption<VALUE>.map3(se
 = if((this is Some) && (second is Some) && (third is Some)) FOption(block(value, second.value, third.value)) else FOption()
 inline fun <VALUE:Any> FList<FOption<VALUE>>.sequence(): FOption<FList<VALUE>>
 = foldRight(FOption(FList())){it, acc->it.map2(acc, ::Cons)}
-fun <VALUE:Any, OTHER:Any> FList<VALUE>.traverse(block:(VALUE)->FOption<OTHER>):FOption<FList<OTHER>>
+fun <VALUE:Any, OTHER:Any> FList<VALUE>.traverseOption(block:(VALUE)->FOption<OTHER>):FOption<FList<OTHER>>
 = foldRight(FOption(FList())){it, acc->block(it).map2(acc, ::Cons)}
 inline fun <VALUE:Any> FList<FOption<VALUE>>.sequenceT(): FOption<FList<VALUE>>
-= traverse{it}
+= traverseOption{it}
 //** flatMap base------------------------------------------------*/
 inline fun <VALUE:Any, OTHER:Any> FOption<VALUE>.flatMapF(block:(VALUE)-> FOption<OTHER>): FOption<OTHER>
 = map(block).getOrElse { FOption() }
