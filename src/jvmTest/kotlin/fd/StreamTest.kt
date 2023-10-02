@@ -31,5 +31,6 @@ class StreamTest {
         assertEquals({it == 5} in FStream(1,2), false)
         assertEquals(2 in FStream(1,2), true)
         assertEquals(7 in FStream(1,2), false)
+        assertEquals(FStream.constant(1).take(2).map { it * 2 }.toList(), listOf(2,2))
     }
 }

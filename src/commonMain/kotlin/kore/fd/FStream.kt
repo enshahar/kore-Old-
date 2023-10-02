@@ -16,6 +16,7 @@ sealed class FStream<out ITEM:Any> {
         operator fun <ITEM:Any> invoke(vararg items:ITEM): FStream<ITEM> = items.foldRight(invoke()){ it, acc ->
             FStream({it}, {acc})
         }
+        fun <ITEM:Any> constant(item:ITEM):FStream<ITEM> = FStream({item}, { constant(item) })
     }
     data object Empty: FStream<Nothing>()
     data class Cons<out ITEM:Any>(val head:()->ITEM, val tail:()-> FStream<ITEM>): FStream<ITEM>()
