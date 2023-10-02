@@ -43,17 +43,17 @@ fun <LEFT:Any, RIGHT1:Any, RIGHT2:Any, OTHER:Any> FEither<LEFT, RIGHT1>.map2(oth
     }
 }
 //= flatMap { v1->other.map {v2->block(v1, v2)} }
-fun <LEFT:Any, RIGHT1:Any, RIGHT2:Any, OTHER:Any> FEither<LEFT, RIGHT1>.map2Log(other: FEither<LEFT, RIGHT2>, block:(RIGHT1, RIGHT2)->OTHER): FEither<FList<LEFT>, OTHER>
-= when(this){
-    is Left ->when(other){
-        is Left -> Left(FList(value, other.value))
-        is Right -> Left(FList(value))
-    }
-    is Right ->when(other){
-        is Left -> Left(FList(other.value))
-        is Right -> Right(block(value, other.value))
-    }
-}
+//fun <LEFT:Any, RIGHT1:Any, RIGHT2:Any, OTHER:Any> FEither<LEFT, RIGHT1>.map2Log(other: FEither<LEFT, RIGHT2>, block:(RIGHT1, RIGHT2)->OTHER): FEither<FList<LEFT>, OTHER>
+//= when(this){
+//    is Left ->when(other){
+//        is Left -> Left(FList(value, other.value))
+//        is Right -> Left(FList(value))
+//    }
+//    is Right ->when(other){
+//        is Left -> Left(FList(other.value))
+//        is Right -> Right(block(value, other.value))
+//    }
+//}
 fun <LEFT:Any, RIGHT1:Any, RIGHT2:Any, OTHER:Any> FEither<LEFT, RIGHT1>.map2Log(other: FEither<FList<LEFT>, RIGHT2>, block:(RIGHT1, RIGHT2)->OTHER): FEither<FList<LEFT>, OTHER>
 = when(this){
     is Left ->when(other){
