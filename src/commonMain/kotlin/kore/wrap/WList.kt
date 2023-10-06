@@ -60,17 +60,21 @@ tailrec fun <ITEM:Any, ACC:Any> WList<ITEM>.fold(acc:ACC, block:(ACC, ITEM)->ACC
         is Nil-> acc
     }
 }
+@PublishedApi internal tailrec fun <ITEM:Any, ACC:Any> WList<ITEM>._foldIndexed(index:Int, acc:ACC, block:(Int, ACC, ITEM)->ACC):ACC
+= when(this){
+    is Cons ->{
+        val tailV = tail.getOrFailEffect{throw it}
+        tailV._foldIndexed(index + 1, block(index, acc, head), block)
+    }
+    is Nil -> acc
+}
+inline fun <ITEM:Any, ACC:Any> WList<ITEM>.foldIndexed(base:ACC, noinline block:(Int, ACC, ITEM)->ACC):ACC
+= _foldIndexed(0, base, block)
 inline fun <ITEM:Any> WList<ITEM>.reverseW(): Wrap<WList<ITEM>>
 = fold(W{WList()}){ acc, it->W{Cons(it, acc)}}
 inline fun <ITEM:Any> WList<ITEM>.reverse(): WList<ITEM>
 = reverseW().getOrFailEffect{throw it}
-//@PublishedApi internal tailrec fun <ITEM:Any, ACC:Any> WList<ITEM>._foldIndexed(index:Int, acc:Wrap<ACC>, block:(Int, Wrap<ACC>, Wrap<ITEM>)->Wrap<ACC>):Wrap<ACC>
-//= when(this){
-//    is Cons -> tail()._foldIndexed(index + 1, block(index, acc, head), block)
-//    is Nil -> acc
-//}
-//inline fun <ITEM:Any, ACC:Any> WList<ITEM>.foldIndexed(base:Wrap<ACC>, noinline block:(Int, Wrap<ACC>, Wrap<ITEM>)->Wrap<ACC>):Wrap<ACC>
-//= _foldIndexed(0, base, block)
+
 
 //inline fun <ITEM:Any, ACC:Any> WList<ITEM>.foldRight(base:Wrap<ACC>, crossinline block:(Wrap<ITEM>, Wrap<ACC>)->Wrap<ACC>):Wrap<ACC>
 //= reverse()().fold(base){ acc, it->block(it, acc)}

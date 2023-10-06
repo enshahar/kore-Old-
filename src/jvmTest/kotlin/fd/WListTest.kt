@@ -23,7 +23,7 @@ class WListTest{
         assertEquals(list.foldW(W("")){ acc, it->W.end() }.ok, null)
         assertEquals(list.addFirst(4).toList(), listOf(4,1,2,3))
         assertEquals(nil.addFirst(4).toString(), "Nil")
-//        assertEquals(list.foldIndexed(""){index, acc,it->"$acc$index$it"}, "011223")
+        assertEquals(list.foldIndexed(""){index, acc,it->"$acc$index$it"}, "011223")
 //        assertEquals(list.foldRight(""){it, acc->acc + it}, "321")
 //        assertEquals(list.foldRightIndexed(""){index, it, acc->"$acc$index$it"}, "031221")
         assertEquals(list.reverse().toList(), listOf(3,2,1))
