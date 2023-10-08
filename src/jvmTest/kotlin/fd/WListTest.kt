@@ -1,12 +1,18 @@
 package fd
 
+import kore.fd.FList
 import kore.wrap.*
 import org.junit.Test
 import kotlin.test.assertEquals
-
+inline fun <ITEM:Any, OTHER:Any> List<ITEM>.transformOrDefault(
+    default:()->OTHER,
+    block:(List<ITEM>)->OTHER
+):OTHER
+= if(isNotEmpty()) block(this) else default()
 class WListTest{
     @Test
     fun test1(){
+        listOf(1, 2, 3, 4).transformOrDefault({0}){ it.sum() / it.size }
         val list = WList(1, 2, 3)
         val nil = WList<Int>()
         assertEquals(list.size, 3)
@@ -67,21 +73,21 @@ class WListTest{
         assertEquals(list.startsWith(WList()), true)
         assertEquals(nil.startsWith(WList()), true)
         assertEquals(nil.startsWith(WList(1,2)), false)
-//        assertEquals(FList(1,2) in list, true)
-//        assertEquals(FList(2,3) in list, true)
-//        assertEquals(FList(1,2,3) in list, true)
-//        assertEquals(FList(1,3) in list, false)
-//        assertEquals(FList() in list, false)
-//        assertEquals(FList(1,3) in nil, false)
-//        assertEquals(FList() in nil, true)
-//        assertEquals(1 in list, true)
-//        assertEquals(2 in list, true)
-//        assertEquals(3 in list, true)
-//        assertEquals(4 in list, false)
-//        assertEquals(1 in nil, false)
-//        assertEquals(FList.invoke(1, 2, 3).zipWith(FList.invoke(1,1,1)){ a, b->a + b}.toList(), listOf(2,3,4))
-//        assertEquals(FList.invoke(1, 2).zipWith(FList.invoke(1,1,1)){ a, b->a + b}.toList(), listOf(2,3))
-//        assertEquals(FList.invoke(1, 2, 3).zipWith(FList.invoke(1,1)){ a, b->a + b}.toList(), listOf(2,3))
+        assertEquals(WList(1,2) in list, true)
+        assertEquals(WList(2,3) in list, true)
+        assertEquals(WList(1,2,3) in list, true)
+        assertEquals(WList(1,3) in list, false)
+        assertEquals(WList() in list, false)
+        assertEquals(WList(1,3) in nil, false)
+        assertEquals(WList() in nil, true)
+        assertEquals(1 in list, true)
+        assertEquals(2 in list, true)
+        assertEquals(3 in list, true)
+        assertEquals(4 in list, false)
+        assertEquals(1 in nil, false)
+        assertEquals(WList.invoke(1, 2, 3).zipWith(WList.invoke(1,1,1)){ a, b->a + b}.toList(), listOf(2,3,4))
+        assertEquals(WList.invoke(1, 2).zipWith(WList.invoke(1,1,1)){ a, b->a + b}.toList(), listOf(2,3))
+        assertEquals(WList.invoke(1, 2, 3).zipWith(WList.invoke(1,1)){ a, b->a + b}.toList(), listOf(2,3))
     }
 
 }

@@ -52,7 +52,7 @@ class ListTest{
         assertEquals(list.startsWith(FList(1,2,3)), true)
         assertEquals(list.startsWith(FList(1,3)), false)
         assertEquals(FList(1,2,3).startsWith(FList(1,2)), true)
-        assertEquals(list.startsWith(FList()), false)
+        assertEquals(list.startsWith(FList()), true)
         assertEquals(nil.startsWith(FList()), true)
         assertEquals(nil.startsWith(FList(1,2)), false)
         assertEquals(FList(1,2) in list, true)
@@ -67,9 +67,12 @@ class ListTest{
         assertEquals(3 in list, true)
         assertEquals(4 in list, false)
         assertEquals(1 in nil, false)
-        assertEquals(FList.invoke(1, 2, 3).zipWith(FList.invoke(1,1,1)){ a, b->a + b}.toList(), listOf(2,3,4))
-        assertEquals(FList.invoke(1, 2).zipWith(FList.invoke(1,1,1)){ a, b->a + b}.toList(), listOf(2,3))
-        assertEquals(FList.invoke(1, 2, 3).zipWith(FList.invoke(1,1)){ a, b->a + b}.toList(), listOf(2,3))
+        assertEquals(FList(1, 2, 3).zipWith(FList(1,1,1)){ a, b->a + b}.toList(), listOf(2,3,4))
+        assertEquals(FList(1, 2).zipWith(FList(1,1,1)){ a, b->a + b}.toList(), listOf(2,3))
+        assertEquals(FList(1, 2, 3).zipWith(FList(1,1)){ a, b->a + b}.toList(), listOf(2,3))
+        assertEquals(FList(1.0,2.0,3.0).average().getOrElse { 0.0 }, 2.0)
+        listOf(1.0).average()
+
     }
 
 }

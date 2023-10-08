@@ -21,4 +21,5 @@ object W{
     @PublishedApi internal val END = invoke<Nothing>(Throwable("END"))
     inline fun <VALUE:Any>end():Wrap<VALUE> = END
     inline fun isEnd(target:Wrap<*>):Boolean = END == target
+    inline fun <VALUE:Any>emptyList():Wrap<WList<VALUE>> = END
 }
