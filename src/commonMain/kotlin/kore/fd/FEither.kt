@@ -19,6 +19,20 @@ sealed class FEither<out L, out R>{
         }
         inline fun <L:Any, R:Any> right(value:R):FEither<L, R> = Right(value)
         inline fun <L:Any, R:Any> left(value:L):FEither<L, R> = Left(value)
+        inline fun <R:Any> r(value:R):FEither<Nothing, R> = Right(value)
+        inline fun <L:Any> l(value:L):FEither<L, Nothing> = Left(value)
+        inline operator fun <R:Any> invoke(block: Unwrap.()->R): FEither<Throwable, R>
+        = try{
+            Right(Unwrap.block())
+        }catch (e:Throwable) {
+            Left(e)
+        }
+    }
+    object Unwrap{
+        inline operator fun <L:Any, R:Any> FEither<L, R>.component1():R = when(this){
+            is Left ->throw Throwable("$value")
+            is Right ->value
+        }
     }
 }
 fun <L:Any, R:Any, OTHER:Any> FEither<L, R>.map(block:(R)->OTHER):FEither<L, OTHER>
@@ -45,18 +59,18 @@ fun <L:Any, R1:Any, R2:Any, OTHER:Any> FEither<L, R1>.map2(other:FEither<L, R2>,
     }
 }
 //= flatMap { v1->other.map {v2->block(v1, v2)} }
-//fun <L:Any, R1:Any, R2:Any, OTHER:Any> FEither<L, R1>.map2Log(other: FEither<L, R2>, block:(R1, R2)->OTHER): FEither<FList<L>, OTHER>
-//= when(this){
-//    is Left ->when(other){
-//        is Left -> Left(FList(value, other.value))
-//        is Right -> Left(FList(value))
-//    }
-//    is Right ->when(other){
-//        is Left -> Left(FList(other.value))
-//        is Right -> Right(block(value, other.value))
-//    }
-//}
-fun <L:Any, R1:Any, R2:Any, OTHER:Any> FEither<L, R1>.map2Log(other: FEither<FList<L>, R2>, block:(R1, R2)->OTHER): FEither<FList<L>, OTHER>
+fun <L:Any, R1:Any, R2:Any, OTHER:Any> FEither<L, R1>.map2LeftToList(other: FEither<L, R2>, block:(R1, R2)->OTHER): FEither<FList<L>, OTHER>
+= when(this){
+    is Left ->when(other){
+        is Left -> Left(FList(value, other.value))
+        is Right -> Left(FList(value))
+    }
+    is Right ->when(other){
+        is Left -> Left(FList(other.value))
+        is Right -> Right(block(value, other.value))
+    }
+}
+fun <L:Any, R1:Any, R2:Any, OTHER:Any> FEither<L, R1>.map2LeftAddList(other: FEither<FList<L>, R2>, block:(R1, R2)->OTHER): FEither<FList<L>, OTHER>
 = when(this){
     is Left ->when(other){
         is Left -> Left(Cons(value, other.value))
@@ -67,47 +81,11 @@ fun <L:Any, R1:Any, R2:Any, OTHER:Any> FEither<L, R1>.map2Log(other: FEither<FLi
         is Right -> Right(block(value, other.value))
     }
 }
-fun <VALUE:Any, L:Any, R:Any> FList<VALUE>.traverseEither(block:(VALUE)-> FEither<L, R>): FEither<L, FList<R>>
-= foldRight(FEither.right(FList())){it, acc->block(it).map2(acc, ::Cons)}
-inline fun <L:Any, R:Any> FList<FEither<L, R>>.sequenceEither(): FEither<L, FList<R>>
-= traverseEither{it}
-fun <VALUE:Any, L:Any, R:Any> FList<VALUE>.traverseEitherLog(block:(VALUE)-> FEither<L, R>): FEither<FList<L>, FList<R>>
-= foldRight(FEither.right(FList())){it, acc->block(it).map2Log(acc, ::Cons)}
-inline fun <L:Any, R:Any> FList<FEither<L, R>>.sequenceEitherLog(): FEither<FList<L>, FList<R>>
-= traverseEitherLog{it}
-//= when(this){
-//    is Nil -> FEither.right(FList())
-//    is Cons ->{
-//        val b = tail.traverseEither(block)
-//        when(val a = block(head)){
-//            is Left -> when(b){
-//                is Left -> Left(Cons(a.value, b.value))
-//                is Right -> Left(FList(a.value))
-//            }
-//            is Right ->when(b){
-//                is Left -> Left(b.value)
-//                is Right -> Right(Cons(a.value, b.value))
-//            }
-//        }
-//    }
-//}
-//fun FList<Double>.averageEither(): Either<String, Double> = when(this){
-//    is FList.Nil -> Either.Left("Empty list")
-//    is FList.Cons -> Either.Right(sum() / size)
-//}
-//inline fun <L:Any, R:Any> FList<Either<L, R>>.sequenceEitherLog(): Either<FList<L>, FList<R>>
-//= traverseEitherLog{
-//    when(it){
-//        is Either.Left -> Either.Left(it.value)
-//        is Either.Right -> Either.Right(it.value)
-//    }
-//}
-
-//fun <VALUE:Any, L:Any, R:Any> FList<VALUE>.traverseEither(block:(VALUE)-> Either<L, R>): Either<L, FList<R>>
-//    = when(this){
-//    is FList.Nil -> Either.right(FList())
-//    is Cons ->when(val v = block(_head)){
-//        is Either.Left ->v
-//        is Either.Right ->v.map2(_tail.traverseEither(block), ::Cons)
-//    }
-//}
+//fun <VALUE:Any, L:Any, R:Any> FList<VALUE>.traverseEither(block:(VALUE)-> FEither<L, R>): FEither<L, FList<R>>
+//= foldRight(Right(FList())){it, acc->block(it).map2(acc, ::Cons)}
+//inline fun <L:Any, R:Any> FList<FEither<L, R>>.sequenceEither(): FEither<L, FList<R>>
+//= traverseEither{it}
+//fun <VALUE:Any, L:Any, R:Any> FList<VALUE>.traverseEitherLog(block:(VALUE)-> FEither<L, R>): FEither<FList<L>, FList<R>>
+//= foldRight(FEither.right(FList())){it, acc->block(it).map2LeftAddList(acc, ::Cons)}
+//inline fun <L:Any, R:Any> FList<FEither<L, R>>.sequenceEitherLog(): FEither<FList<L>, FList<R>>
+//= traverseEitherLog{it}

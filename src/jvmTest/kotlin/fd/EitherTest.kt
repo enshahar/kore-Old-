@@ -1,57 +1,57 @@
-package fd
-
-import kore.fd.*
-import kotlin.test.Test
-import kotlin.test.assertEquals
-
-class EitherTest {
-    @Test
-    fun test1(){
-//        val list = kore.fd.FList(1.0, 2.0, 3.0)
-//        assertEquals(list.averageEither(), Either.Right(2.0))
-//        assertEquals(Either.right(3).orElse{ Either.right(2)}, Either.right(3))
-//        assertEquals(Either.left(3).orElse{ Either.right(2)}, Either.right(2))
-//        assertEquals(Either.left(3).map{5}, Either.left(3))
-//        assertEquals(Either.right(3).map{5}, Either.right(5))
-//        assertEquals(Either.left(3).flatMap{ Either.right(5)}, Either.left(3))
-//        assertEquals(Either.right(3).flatMap{ Either.right(5)}, Either.right(5))
-//        assertEquals(kore.fd.FList(1, 2, 3).traverseEither{ Either.right(it)}, Either.right(kore.fd.FList(1, 2, 3)))
-//        assertEquals(
-//            kore.fd.FList(Either.right(1), Either.right(2), Either.right(3)).sequenceEither(), Either.right(
-//                kore.fd.FList(
-//                    1,
-//                    2,
-//                    3
-//                )
-//            ))
-//        assertEquals(kore.fd.FList(Either.right(1), Either.left(2), Either.right(3)).sequenceEither(), Either.left(2))
-//        assertEquals(Either.left(1).map2Log<Int, Int, Int, Int>(Either.left(2)){ a, b->3}.toString(), "Left(value=Cons(_head=1, _tail=Cons(_head=2, _tail=Nil)))")
-//        assertEquals(kore.fd.FList(1, 2, 3).traverseEitherLog{ Either.right(it)}, Either.right(kore.fd.FList(1, 2, 3)))
-//        assertEquals(kore.fd.FList(1, Either.left("2"), Either.left("3")).traverseEitherLog{
+//@file:Suppress("UNCHECKED_CAST")
+//
+//package fd
+//
+//import kore.fd.*
+//import kore.fd.FEither.Left
+//import kore.fd.FEither.Right
+//import kotlin.test.Test
+//import kotlin.test.assertEquals
+//
+//class EitherTest {
+//    @Test
+//    fun test1(){
+//        assertEquals(FEither.r(3).orElse{ FEither.r(2)}, FEither.r(3))
+//        assertEquals(FEither.l(3).orElse{ FEither.r(2)}, FEither.r(2))
+//        assertEquals(FEither.l(3).map{5}, FEither.l(3))
+//        assertEquals(FEither.r(3).map{5}, FEither.r(5))
+//        assertEquals(FEither.l(3).flatMap{ FEither.r(5)}, FEither.l(3))
+//        assertEquals(FEither.r(3).flatMap{ FEither.r(5)}, FEither.r(5))
+//        assertEquals(FEither{
+//            val (a) = FEither.r(5)
+//            val (b) = FEither.r(6)
+//            a + b
+//        }, FEither.r(11))
+//        assertEquals(FList(1, 2, 3).traverseEither{ FEither.r(it)}, FEither.r(FList(1, 2, 3)))
+//        assertEquals(FList(FEither.r(1), FEither.r(2), FEither.r(3)).sequenceEither(), FEither.r(FList(1,2,3)))
+//        assertEquals(FList(FEither.r(1), FEither.l(2), FEither.r(3)).sequenceEither(), FEither.left(2))
+//        assertEquals(FEither.l(1).map2LeftToList<Int, Int, Int, Int>(FEither.l(2)){ a, b->3}, FEither.l(FList(1,2)))
+//        assertEquals(FList(1, 2, 3).traverseEitherLog{ FEither.right(it)}, FEither.right(FList(1, 2, 3)))
+//        assertEquals(FList(1, Left("2"), Left("3")).traverseEitherLog{
 //            when(it){
-//                is Either.Left<*> -> Either.Left(it.value)
-//                is Either.Right<*>-> Either.Right(it.value)
-//                else-> Either.right(it)
-//            } as Either<String, Int>
-//        }.toString(), "Left(value=Cons(_head=2, _tail=Cons(_head=3, _tail=Nil)))")
-//        assertEquals(kore.fd.FList(Either.left("1"), 2, Either.left("3")).traverseEitherLog{
+//                is Left<*> -> Left(it.value)
+//                is Right<*>-> Right(it.value)
+//                else-> FEither.right(it)
+//            } as FEither<String, Int>
+//        }, FEither.left(FList("2","3")))
+//        assertEquals(FList(Left("1"), 2, Left("3")).traverseEitherLog{
 //            when(it){
-//                is Either.Left<*> -> Either.Left(it.value)
-//                is Either.Right<*>-> Either.Right(it.value)
-//                else-> Either.right(it)
-//            } as Either<String, Int>
-//        }.toString(), "Left(value=Cons(_head=1, _tail=Cons(_head=3, _tail=Nil)))")
+//                is Left<*> -> Left(it.value)
+//                is Right<*>-> Right(it.value)
+//                else-> FEither.right(it)
+//            } as FEither<String, Int>
+//        }, FEither.left(FList("1","3")))
 //        assertEquals(
-//            kore.fd.FList(Either.left("1"), Either.right(2), Either.left("3")).sequenceEitherLog().toString(),
-//            "Left(value=Cons(_head=1, _tail=Cons(_head=3, _tail=Nil)))"
+//            FList(Left("1"), FEither.right(2), Left("3")).sequenceEitherLog(),
+//            FEither.left(FList("1", "3"))
 //        )
 //        assertEquals(
-//            kore.fd.FList(Either.right("1"), Either.left(2), Either.left("3")).sequenceEitherLog().toString(),
-//            "Left(value=Cons(_head=2, _tail=Cons(_head=3, _tail=Nil)))"
+//            FList(FEither.right("1"), Left("2"), Left("3")).sequenceEitherLog(),
+//            FEither.left(FList("2", "3"))
 //        )
 //        assertEquals(
-//            kore.fd.FList(Either.right("1"), Either.right(2), Either.right("3")).sequenceEitherLog().toString(),
-//            "Right(value=Cons(_head=1, _tail=Cons(_head=2, _tail=Cons(_head=3, _tail=Nil))))"
+//            FList(FEither.r("1"), FEither.r("2"), FEither.r("3")).sequenceEitherLog(),
+//            FEither.r(FList("1","2","3"))
 //        )
-    }
-}
+//    }
+//}

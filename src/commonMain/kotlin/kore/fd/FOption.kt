@@ -62,12 +62,12 @@ inline fun <VALUE:Any, OTHER:Any, RETURN:Any> FOption<VALUE>.map2(other: FOption
 inline fun <VALUE:Any, SECOND:Any, THIRD:Any, RETURN:Any> FOption<VALUE>.map3(second: FOption<SECOND>, third: FOption<THIRD>, block:(VALUE, SECOND, THIRD)->RETURN): FOption<RETURN>
         = if((this is Some) && (second is Some) && (third is Some)) FOption(block(value, second.value, third.value)) else FOption()
 //= flatMap{v1->second.flatMap{v2->third.map{v3->block(v1, v2, v3)}}
-inline fun <VALUE:Any> FList<FOption<VALUE>>.sequence(): FOption<FList<VALUE>>
-= foldRight(FOption(FList())){it, acc->it.map2(acc, ::Cons)}
-fun <VALUE:Any, OTHER:Any> FList<VALUE>.traverseOption(block:(VALUE)->FOption<OTHER>):FOption<FList<OTHER>>
-= foldRight(FOption(FList())){it, acc->block(it).map2(acc, ::Cons)}
-inline fun <VALUE:Any> FList<FOption<VALUE>>.sequenceT(): FOption<FList<VALUE>>
-= traverseOption{it}
+//inline fun <VALUE:Any> FList<FOption<VALUE>>.sequence(): FOption<FList<VALUE>>
+//= foldRight(FOption(FList())){it, acc->it.map2(acc, ::Cons)}
+//fun <VALUE:Any, OTHER:Any> FList<VALUE>.traverseOption(block:(VALUE)->FOption<OTHER>):FOption<FList<OTHER>>
+//= foldRight(FOption(FList())){it, acc->block(it).map2(acc, ::Cons)}
+//inline fun <VALUE:Any> FList<FOption<VALUE>>.sequenceT(): FOption<FList<VALUE>>
+//= traverseOption{it}
 inline fun List<Double>.variance(): FOption<Double> = if(isEmpty()) FOption() else{
     val avg = average()
     FOption(map{(it - avg).pow(2)}.average())
@@ -79,6 +79,6 @@ fun FList<Double>.average(): FOption<Double>
     })
     is Nil->FOption()
 }
-fun FList<Double>.variance(): FOption<Double> = average().flatMap{
-    map { item -> (item - it).pow(2) }.average()
-}
+//fun FList<Double>.variance(): FOption<Double> = average().flatMap{
+//    map { item -> (item - it).pow(2) }.average()
+//}
