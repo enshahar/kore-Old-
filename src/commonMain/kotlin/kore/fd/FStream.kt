@@ -14,15 +14,19 @@ sealed class FStream<out ITEM:Any> {
         }
         operator fun <ITEM:Any> invoke(): FStream<ITEM> = Empty
         operator fun <ITEM:Any> invoke(vararg items:ITEM): FStream<ITEM> = items.foldRight(invoke()){ it, acc ->
-            FStream({it}, {acc})
+            invoke({it}, {acc})
         }
         fun <ITEM:Any> constant(item:ITEM):FStream<ITEM> = FStream({item}, { constant(item) })
         fun increaseFrom(item:Int):FStream<Int> = FStream({item}, { increaseFrom(item + 1) })
         private fun _fib(prevprev:Int, prev:Int):FStream<Int> = FStream({prevprev + prev}, { _fib(prev, prevprev + prev) })
         fun fib():FStream<Int> = FStream({0}, { FStream({1}, { _fib(0, 1)}) })
-        fun <ITEM:Any, REF:Any> unfold(ref:REF, block:(REF)-> FOption<Pair<ITEM, REF>>):FStream<ITEM> = when(val v = block(ref)){
-            is FOption.None -> invoke()
-            is FOption.Some -> v.value.let { (item, ref)->invoke({item}, {unfold(ref, block)}) }
+        fun <ITEM:Any, REF:Any> unfold(ref:REF, block:(REF)-> FOption<Pair<ITEM, REF>>):FStream<ITEM>
+        = when(val v = block(ref)){
+            is FOption.None -> Empty
+            is FOption.Some -> {
+                val (item, nextRef) = v.value
+                invoke({item}, {unfold(nextRef, block)})
+            }
         }
         fun from2(item:Int):FStream<Int> = unfold(item){FOption(it to it + 1)}
         fun constant2(item:Int):FStream<Int> = unfold(item){FOption(it to it)}

@@ -21,13 +21,15 @@ abstract class Data:ReadWriteProperty<Data, Any>{
 
     @JvmInline
     value class Immutable<T:Any>(val value:T)
-    /** lazy 필드 매칭용 인덱서 */
-    @PublishedApi internal var _index = 0
+
     /** 실제 값을 보관하는 저장소 */
     @PublishedApi internal var _values:MutableMap<String, Any?>? = null
     /** 외부에 표출되는 저장소 */
     val props:MutableMap<String, Any?> get() = _values ?: hashMapOf<String, Any?>().also{ _values = it }
-    override fun getValue(thisRef: Data, property:KProperty<*>):Any{
+    /** 인스턴스 필드 저장소를 쓸 경우 */
+    @PublishedApi internal val _fields:HashMap<String, Field<*>>? = null
+    @PublishedApi internal val _tasks:HashMap<Int, Task>? = null
+    override fun getValue(thisRef:Data, property:KProperty<*>):Any{
         val type: KClass<out Data> = this::class
         val name: String = property.name
         val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
@@ -53,9 +55,10 @@ abstract class Data:ReadWriteProperty<Data, Any>{
         } ?: value
 //        println("rawset1 ${props[name]}")
     }
+    /** lazy 필드 매칭용 인덱서 */
+    @PublishedApi internal var _index = 0
     @PublishedApi internal var _lastIndex = -1
     @PublishedApi internal var _task: Task? = null
-    @Suppress("NOTHING_TO_INLINE")
     inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD?{
         val slowData:SlowData? = this as? SlowData
         return if(slowData != null) {
