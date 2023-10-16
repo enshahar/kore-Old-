@@ -20,7 +20,8 @@ sealed class FStream<out ITEM:Any> {
         fun increaseFrom(item:Int):FStream<Int> = FStream({item}, { increaseFrom(item + 1) })
         private fun _fib(prevprev:Int, prev:Int):FStream<Int> = FStream({prevprev + prev}, { _fib(prev, prevprev + prev) })
         fun fib():FStream<Int> = FStream({0}, { FStream({1}, { _fib(0, 1)}) })
-        fun <ITEM:Any, REF:Any> unfold(ref:REF, block:(REF)-> FOption<Pair<ITEM, REF>>):FStream<ITEM> = when(val v = block(ref)){
+        fun <ITEM:Any, REF:Any> unfold(ref:REF, block:(REF)-> FOption<Pair<ITEM, REF>>):FStream<ITEM>
+        = when(val v = block(ref)){
             is FOption.None -> invoke()
             is FOption.Some -> v.value.let { (item, ref)->invoke({item}, {unfold(ref, block)}) }
         }
