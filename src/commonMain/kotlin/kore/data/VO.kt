@@ -6,7 +6,7 @@ package kore.data
 
 import kore.error.E
 import kore.data.field.*
-import kore.data.task.TaskStore
+//import kore.data.task.TaskStore
 import kore.data.task.Task
 import kotlin.jvm.JvmInline
 import kotlin.properties.PropertyDelegateProvider
@@ -31,7 +31,7 @@ abstract class VO(useInstanceField:Boolean = false){
             override fun getValue(vo: VO, property: KProperty<*>): Any {
                 val type: KClass<out VO> = vo::class
                 val name: String = property.name
-                val task:Task? = vo._tasks?.get(name) ?: TaskStore(type, name)
+                val task:Task? = vo._tasks?.get(name) //?: TaskStore(type, name)
                 val result:Any = vo.props[name] ?: task?.getDefault(vo)?.let{
                     vo[name] = it
                     vo.props[name]
@@ -53,27 +53,28 @@ abstract class VO(useInstanceField:Boolean = false){
             if(name !in field){
                 _fieldOrder[vo::class]?.add(name)
                 field[name] = vo.temp as Field<*>
-                vo.props[name] = null
+                vo.values[name] = null
             }
             _property
         }
-        inline fun <VALUE:Any> provider(vo:VO, field:Field<VALUE>):PropertyDelegateProvider<VO, ReadWriteProperty<VO, VALUE>>{
-            vo.temp = field
-            return _delegateProvider as PropertyDelegateProvider<VO, ReadWriteProperty<VO, VALUE>>
+        inline fun <VALUE:Any> VO.provider(field:Field<VALUE>):Prop<VALUE>{
+            temp = field
+            return _delegateProvider as Prop<VALUE>
         }
     }
     @PublishedApi internal var temp:Any = 0
     /** 실제 값을 보관하는 저장소 */
     @PublishedApi internal var _values:MutableMap<String, Any?>? = null
     /** 외부에 표출되는 저장소 */
-    val props:MutableMap<String, Any?> get() = _values ?: hashMapOf<String, Any?>().also{ _values = it }
+    @PublishedApi internal inline val values:MutableMap<String, Any?> get() = _values ?: hashMapOf<String, Any?>().also{ _values = it }
+    inline val props:Map<String, Any?> get() = values
     /** 인스턴스 필드 저장소를 쓸 경우 */
     @PublishedApi internal val _fields:HashMap<String, Field<*>>? = if(useInstanceField) hashMapOf() else null
     @PublishedApi internal val _tasks:HashMap<String, Task>? = if(useInstanceField) hashMapOf() else null
     operator fun set(name:String, value:Any){
         val type: KClass<out VO> = this::class
-        val task:Task? = _tasks?.get(name) ?: TaskStore(type, name)
-        props[name] = task?.setTasks?.fold(value){acc, setTask->
+        val task:Task? = _tasks?.get(name) //?: TaskStore(type, name)
+        values[name] = task?.setTasks?.fold(value){acc, setTask->
             setTask(this, acc) ?: SetTaskFail(acc).terminate()
         } ?: value
     }
@@ -136,10 +137,10 @@ abstract class VO(useInstanceField:Boolean = false){
 //    inline val stringMap get() = stringMap()
 //
 //
-//    inline fun int(block: IntField.()->Unit = {}): Prop<Int> {
-//        IntField.firstTask()?.block()
-//        return IntField.delegator
-//    }
+    inline fun int(block: IntField.()->Unit = {}): Prop<Int> {
+        //IntField.firstTask()?.block()
+        return provider(IntField)
+    }
 //    inline fun uint(block: UIntField.()->Unit = {}): Prop<UInt> {
 //        UIntField.firstTask()?.block()
 //        return UIntField.delegator
