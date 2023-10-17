@@ -1,13 +1,13 @@
 package data
 
-import kore.data.Data
+import kore.data.VO
 import kore.data.Union
 import kore.data.converter.encodeKore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TestKoreEncode1 {
-    class Test1:Data(){
+    class Test1:VO(){
         var a by string
         var b by int
     }
@@ -19,7 +19,7 @@ class TestKoreEncode1 {
         }
         assertEquals(t1.encodeKore()(), "hika|3|")
     }
-    class Test2:Data(){
+    class Test2:VO(){
         var a by string
         var b by int
         var c by data(TestKoreEncode1::Test1)
@@ -36,7 +36,7 @@ class TestKoreEncode1 {
         }
         assertEquals(t1.encodeKore()(), "hika1|3|hika2|4||")
     }
-    class Test3:Data(){
+    class Test3:VO(){
         var a by string
         var b by stringList
         var c by int
@@ -68,7 +68,7 @@ class TestKoreEncode1 {
         }
         assertEquals(t1.encodeKore()(), "hika1|a|b|c@|3|1|2|3@|hika2|4||hika10|10||hika11|11|@|")
     }
-    class Test4:Data(){
+    class Test4:VO(){
         var a by string
         var b by stringMap
         var c by int
@@ -100,7 +100,7 @@ class TestKoreEncode1 {
         }
         assertEquals(t1.encodeKore()(), "hika1|a|aa|b|bb|c|cc@|3|a|1|b|2|c|3@|hika2|4||a|hika10|10||b|hika11|11|@|")
     }
-    class Test5:Data(){
+    class Test5:VO(){
         enum class Enum{A,B,C}
         var a by enum<Enum>()
         var b by enumList<Enum>()
@@ -115,8 +115,8 @@ class TestKoreEncode1 {
         }
         assertEquals(t1.encodeKore()(), "0|1|2@|a|0|b|1@|")
     }
-    class Test6:Data(){
-        sealed class TestUnion:Data(){
+    class Test6:VO(){
+        sealed class TestUnion:VO(){
             companion object: Union<TestUnion>(TestUnion::A, TestUnion::B)
             class A: TestUnion(){
                 var c by data(TestKoreEncode1::Test1)

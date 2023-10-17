@@ -1,16 +1,16 @@
 package data
 
-import kore.data.Data
+import kore.data.VO
 import kore.data.converter.encodeKore
 import org.junit.Test
 import kotlin.test.assertEquals
 
 class TestData {
-    class Response1:Data(){
+    class Response1:VO(){
         var name by string
         var age by int
     }
-    class Request1:Data(){
+    class Request1:VO(){
         var a by string
         var b by intList
         var c by int

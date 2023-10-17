@@ -2,7 +2,7 @@
 
 package kore.data.converter
 
-import kore.data.Data
+import kore.data.VO
 import kore.data.field.*
 import kore.error.E
 import kore.wrap.W
@@ -11,8 +11,8 @@ import kotlin.reflect.KClass
 
 
 
-inline fun Data.encodeKore():Wrap<String> = KoreConverter.encode(this)
-inline fun <DATA:Data> DATA.decodeKore(serial:String):Wrap<DATA> = KoreConverter.decode(this, serial)
+inline fun VO.encodeKore():Wrap<String> = KoreConverter.encode(this)
+inline fun <DATA:VO> DATA.decodeKore(serial:String):Wrap<DATA> = KoreConverter.decode(this, serial)
 
 object KoreConverter: Converter<String> {
     const val OPTIONAL_NULL: String = "~"
@@ -77,6 +77,6 @@ object KoreConverter: Converter<String> {
     fun setDecoder(type:KClass<*>,block:(cursor: Cursor, field: Field<*>)->Wrap<Any>){
         KoreDecoder.decoders[type] = block
     }
-    override fun encode(data: Data):Wrap<String> = KoreEncoder.data(data)
-    override fun <DATA: Data> decode(data:DATA, encoded: String):Wrap<DATA> = KoreDecoder.data(Cursor(encoded, 0), data)
+    override fun encode(data: VO):Wrap<String> = KoreEncoder.data(data)
+    override fun <DATA: VO> decode(data:DATA, encoded: String):Wrap<DATA> = KoreDecoder.data(Cursor(encoded, 0), data)
 }

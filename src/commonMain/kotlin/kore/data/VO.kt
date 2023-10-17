@@ -1,61 +1,86 @@
-//@file:Suppress("NOTHING_TO_INLINE", "PropertyName", "UNCHECKED_CAST")
-//
-//package kore.data
-//
-//import kore.error.E
-//import kore.data.field.*
-//import kore.data.indexer.Indexer
-//import kore.data.task.TaskStore
-//import kore.data.task.Task
-//import kotlin.jvm.JvmInline
-//import kotlin.properties.ReadWriteProperty
-//import kotlin.reflect.KClass
-//import kotlin.reflect.KProperty
-//
-//abstract class Data:ReadWriteProperty<Data, Any>{
-//    class NoIndex(val name:String):E(name)
-//    class NotInitialized(val name:String):E(name)
-//    class GetTaskFail(val result:Any):E(result)
-//    class SetTaskFail(val result:Any):E(result)
-//    class DefaultNotValue(val value:Any):E(value)
-//
-//    @JvmInline
-//    value class Immutable<T:Any>(val value:T)
-//    /** lazy 필드 매칭용 인덱서 */
+@file:Suppress("NOTHING_TO_INLINE", "PropertyName", "UNCHECKED_CAST", "PARAMETER_NAME_CHANGED_ON_OVERRIDE",
+    "ObjectPropertyName"
+)
+
+package kore.data
+
+import kore.error.E
+import kore.data.field.*
+import kore.data.task.TaskStore
+import kore.data.task.Task
+import kotlin.jvm.JvmInline
+import kotlin.properties.PropertyDelegateProvider
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
+
+abstract class VO(useInstanceField:Boolean = false){
+    class NoIndex(val name:String):E(name)
+    class NotInitialized(val name:String):E(name)
+    class GetTaskFail(val result:Any):E(result)
+    class SetTaskFail(val result:Any):E(result)
+    class DefaultNotValue(val value:Any):E(value)
+
+    @JvmInline
+    value class Immutable<T:Any>(val value:T)
+
+    companion object{
+        private val _fields:HashMap<KClass<out VO>, HashMap<String, Field<*>>> = hashMapOf()
+        private val _fieldOrder:HashMap<KClass<out VO>, ArrayList<String>> = hashMapOf()
+        @PublishedApi internal val _property: ReadWriteProperty<VO, Any> = object:ReadWriteProperty<VO, Any>{
+            override fun getValue(vo: VO, property: KProperty<*>): Any {
+                val type: KClass<out VO> = vo::class
+                val name: String = property.name
+                val task:Task? = vo._tasks?.get(name) ?: TaskStore(type, name)
+                val result:Any = vo.props[name] ?: task?.getDefault(vo)?.let{
+                    vo[name] = it
+                    vo.props[name]
+                } ?: NotInitialized(name).terminate()
+                return task?.getTasks?.fold(result){acc, getTask->
+                    getTask(vo, acc) ?: GetTaskFail(acc).terminate()
+                } ?: result
+            }
+            override fun setValue(vo: VO, property: KProperty<*>, value: Any) {
+                vo[property.name] = value
+            }
+        }
+        @PublishedApi internal val _delegateProvider: PropertyDelegateProvider<VO, ReadWriteProperty<VO, Any>> = PropertyDelegateProvider{ vo, prop->
+            val name: String = prop.name
+            val field:HashMap<String, Field<*>> = vo._fields ?: _fields.getOrPut(vo::class){
+                _fieldOrder[vo::class] = arrayListOf()
+                hashMapOf()
+            }
+            if(name !in field){
+                _fieldOrder[vo::class]?.add(name)
+                field[name] = vo.temp as Field<*>
+                vo.props[name] = null
+            }
+            _property
+        }
+        inline fun <VALUE:Any> provider(vo:VO, field:Field<VALUE>):PropertyDelegateProvider<VO, ReadWriteProperty<VO, VALUE>>{
+            vo.temp = field
+            return _delegateProvider as PropertyDelegateProvider<VO, ReadWriteProperty<VO, VALUE>>
+        }
+    }
+    @PublishedApi internal var temp:Any = 0
+    /** 실제 값을 보관하는 저장소 */
+    @PublishedApi internal var _values:MutableMap<String, Any?>? = null
+    /** 외부에 표출되는 저장소 */
+    val props:MutableMap<String, Any?> get() = _values ?: hashMapOf<String, Any?>().also{ _values = it }
+    /** 인스턴스 필드 저장소를 쓸 경우 */
+    @PublishedApi internal val _fields:HashMap<String, Field<*>>? = if(useInstanceField) hashMapOf() else null
+    @PublishedApi internal val _tasks:HashMap<String, Task>? = if(useInstanceField) hashMapOf() else null
+    operator fun set(name:String, value:Any){
+        val type: KClass<out VO> = this::class
+        val task:Task? = _tasks?.get(name) ?: TaskStore(type, name)
+        props[name] = task?.setTasks?.fold(value){acc, setTask->
+            setTask(this, acc) ?: SetTaskFail(acc).terminate()
+        } ?: value
+    }
+    /** lazy 필드 매칭용 인덱서 */
 //    @PublishedApi internal var _index = 0
-//    /** 실제 값을 보관하는 저장소 */
-//    @PublishedApi internal var _values:MutableMap<String, Any?>? = null
-//    /** 외부에 표출되는 저장소 */
-//    val props:MutableMap<String, Any?> get() = _values ?: hashMapOf<String, Any?>().also{ _values = it }
-//    override fun getValue(thisRef: Data, property:KProperty<*>):Any{
-//        val type: KClass<out Data> = this::class
-//        val name: String = property.name
-//        val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
-//        val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
-//        val result:Any = props[name] ?: task?.getDefault(this)?.let{
-//            setValue(thisRef, property, it)
-//            props[name]
-//        } ?: NotInitialized(name).terminate()
-//        return task?.getTasks?.fold(result){acc, getTask->
-//            getTask(this, acc) ?: GetTaskFail(acc).terminate()
-//        } ?: result
-//    }
-//    override fun setValue(thisRef: Data, property:KProperty<*>, value:Any){
-//        setRawValue(property.name, value)
-//    }
-//    fun setRawValue(name:String, value:Any){
-//        val type: KClass<out Data> = this::class
-//        val index: Int = Indexer.get(type, name)() ?: NoIndex(name).terminate()
-//        val task:Task? = (this as? SlowData)?._tasks?.get(index) ?: TaskStore(type, index)
-////        println("rawset0 $name $value, $index, $task, ${task?.setTasks}")
-//        props[name] = task?.setTasks?.fold(value){acc, setTask->
-//            setTask(this, acc) ?: SetTaskFail(acc).terminate()
-//        } ?: value
-////        println("rawset1 ${props[name]}")
-//    }
 //    @PublishedApi internal var _lastIndex = -1
 //    @PublishedApi internal var _task: Task? = null
-//    @Suppress("NOTHING_TO_INLINE")
 //    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD?{
 //        val slowData:SlowData? = this as? SlowData
 //        return if(slowData != null) {
@@ -64,7 +89,7 @@
 //                slowData._tasks[_index] = Task()
 //                this
 //            }
-//        }else TaskStore.firstTask(this@Data)?.let{
+//        }else TaskStore.firstTask(this@VO)?.let{
 //            /** 최초 생성된 Task라면 _task에 캐쉬를 잡고 필드 반환*/
 //            if(_task == null || _index != _lastIndex){
 //                _lastIndex = _index
@@ -251,35 +276,35 @@
 //        EnumMapField<ENUM>().firstTask()?.block()
 //        return EnumMapField<ENUM>().delegator
 //    }
-//    inline fun <reified DATA: Data> data(noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
+//    inline fun <reified DATA: VO> data(noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
 //        DataField[factory].firstTask()?.block()
 //        return DataField[factory].delegator
 //    }
-//    inline fun <DATA: Data> data(cls:KClass<DATA>, noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
+//    inline fun <DATA: VO> data(cls:KClass<DATA>, noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
 //        DataField[cls, factory].firstTask()?.block()
 //        return DataField[cls, factory].delegator
 //    }
-//    inline fun <reified DATA: Data> dataList(noinline factory:()->DATA, block: DataListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
+//    inline fun <reified DATA: VO> dataList(noinline factory:()->DATA, block: DataListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
 //        DataListField[factory].firstTask()?.block()
 //        return DataListField[factory].delegator
 //    }
-//    inline fun <reified DATA: Data> dataMap(noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
+//    inline fun <reified DATA: VO> dataMap(noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
 //        DataMapField[factory].firstTask()?.block()
 //        return DataMapField[factory].delegator
 //    }
-//    inline fun <DATA: Data> dataMap(cls:KClass<DATA>, noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
+//    inline fun <DATA: VO> dataMap(cls:KClass<DATA>, noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
 //        DataMapField[cls, factory].firstTask()?.block()
 //        return DataMapField[cls, factory].delegator
 //    }
-//    inline fun <reified DATA: Data> union(union: Union<DATA>, block: UnionField<DATA>.()->Unit = {}): Prop<DATA> {
+//    inline fun <reified DATA: VO> union(union: Union<DATA>, block: UnionField<DATA>.()->Unit = {}): Prop<DATA> {
 //        UnionField[union].firstTask()?.block()
 //        return UnionField[union].delegator
 //    }
-//    inline fun <reified DATA: Data> unionList(union: Union<DATA>, block: UnionListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
+//    inline fun <reified DATA: VO> unionList(union: Union<DATA>, block: UnionListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
 //        UnionListField[union].firstTask()?.block()
 //        return UnionListField[union].delegator
 //    }
-//    inline fun <reified DATA: Data> unionMap(union: Union<DATA>, block: UnionMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
+//    inline fun <reified DATA: VO> unionMap(union: Union<DATA>, block: UnionMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
 //        UnionMapField[union].firstTask()?.block()
 //        return UnionMapField[union].delegator
 //    }
@@ -518,4 +543,4 @@
 //        }
 //        return EnumMapField<ENUM>().delegator
 //    }
-//}
+}

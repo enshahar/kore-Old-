@@ -2,8 +2,7 @@
 
 package kore.data.converter
 
-import kore.data.Data
-import kore.data.SlowData
+import kore.data.VO
 import kore.data.converter.KoreConverter.Cursor
 import kore.data.converter.KoreConverter.Cursor.DecodeNoListTeminator
 import kore.data.converter.KoreConverter.OPTIONAL_NULL_C
@@ -27,7 +26,7 @@ private val entry:Map.Entry<String, Field<*>> = object:Map.Entry<String, Field<*
 }
 //fun getDecodeStringValue(cursor: Cursor):String = KoreDecoder.decodeStringValue(cursor)
 internal object KoreDecoder{
-    class DecodeInvalidEmptyData(val data:Data, val cursor:Int): E(data)
+    class DecodeInvalidEmptyData(val data:VO, val cursor:Int): E(data)
     class DecodeNoDecoder(val field:Field<*>, val cursor:Int, val encoded:String): E(field, cursor, encoded)
     class DecodeInvalidValue(val field:Field<*>, val target:String, val cursor:Int): E(field, target, cursor)
     class DecodeInvalidListValue(val field:Field<*>, val target:String, val index:Int): E(field, target, index)
@@ -35,8 +34,8 @@ internal object KoreDecoder{
     private inline fun decode(cursor:Cursor, field: Field<*>):Wrap<Any>{
         return decoders[field::class]?.invoke(cursor, field) ?: W(DecodeNoDecoder(field, cursor.v, cursor.encoded))
     }
-    internal fun <DATA: Data> data(cursor:Cursor, data:DATA):Wrap<DATA>{
-        val type:KClass<out Data> = data::class
+    internal fun <DATA: VO> data(cursor:Cursor, data:DATA):Wrap<DATA>{
+        val type:KClass<out VO> = data::class
         val slowData: SlowData? = data as? SlowData
         /** 이미 data의 인스턴스를 받았으므로 slow의 _fields나 Field에 있을 수 밖에 없음*/
         val fields:HashMap<String, Field<*>> = slowData?._fields ?: Field[data::class]!!
@@ -53,7 +52,7 @@ internal object KoreDecoder{
                 cursor.curr == OPTIONAL_NULL_C -> cursor.v++
                 else-> decode(cursor, entry.value).flatMap{
                     try{
-                        data.setRawValue(entry.key, it)
+                        data.set(entry.key, it)
                         W(it)
                     }catch(e:Throwable){
                         W(e)
@@ -180,14 +179,14 @@ internal object KoreDecoder{
         DataField::class to { c, f->data(c, (f as DataField<*>).factory())},
         DataListField::class to {c, f->
             val result: ArrayList<Any> = arrayListOf()
-            val factory: () -> Data = (f as DataListField<*>).factory
+            val factory: () -> VO = (f as DataListField<*>).factory
             c.loopItems {
                 data(c, factory()).effect{result.add(it)}
             } ?: W(result)
         },
         DataMapField::class to {c, f->
-            val result:HashMap<String, Data> = hashMapOf()
-            val factory: () -> Data = (f as DataMapField<*>).factory
+            val result:HashMap<String, VO> = hashMapOf()
+            val factory: () -> VO = (f as DataMapField<*>).factory
             c.loopItems {
                 stringValue(c).flatMap{ key->
                     c.v++
@@ -197,14 +196,14 @@ internal object KoreDecoder{
         },
         UnionField::class to {c, f->
             value(c, f){toIntOrNull()}.flatMap{ index->
-                val factory:()->Data = (f as UnionField<*>).union.factories[index]
+                val factory:()->VO = (f as UnionField<*>).union.factories[index]
                 c.v++
                 data(c, factory())
             }
         },
         UnionListField::class to {c, f->
             val result:ArrayList<Any> = arrayListOf()
-            val factories:Array<out ()->Data> = (f as UnionListField<*>).union.factories
+            val factories:Array<out ()->VO> = (f as UnionListField<*>).union.factories
             c.loopItems {
                 value(c, f){toIntOrNull()}.map{
                     factories[it]
@@ -217,7 +216,7 @@ internal object KoreDecoder{
             }?.let{W(it)} ?: W(result)
         },
         UnionMapField::class to {c, f->
-            val result:HashMap<String, Data> = hashMapOf()
+            val result:HashMap<String, VO> = hashMapOf()
             val factories = (f as UnionMapField<*>).union.factories
             c.loopItems {
                 stringValue(c).flatMap{ key->

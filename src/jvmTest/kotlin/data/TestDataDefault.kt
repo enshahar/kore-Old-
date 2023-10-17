@@ -1,13 +1,12 @@
 package data
 
-import kore.data.SlowData
-import kore.data.Data
+import kore.data.VO
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TestDataDefault {
-    class Test1(i:Int=0):Data(){
+    class Test1(i:Int=0):VO(){
         var x by int{default(i)}
         var y by int{default(2*i)}
     }
@@ -20,12 +19,12 @@ class TestDataDefault {
         assertEquals(x2.x, 10)
         assertEquals(x2.y, 20)
     }
-    class Test2<T: Data>(cls: KClass<T>, factory:()->T): SlowData() {
-        class A:Data(){
+    class Test2<T: VO>(cls: KClass<T>, factory:()->T): SlowData() {
+        class A:VO(){
             var a by int
             var b by string
         }
-        class B:Data(){
+        class B:VO(){
             var c by int
             var d by string
         }
