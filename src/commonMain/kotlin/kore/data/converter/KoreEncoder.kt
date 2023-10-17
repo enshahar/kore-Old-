@@ -2,8 +2,7 @@
 
 package kore.data.converter
 
-import kore.data.Data
-import kore.data.SlowData
+import kore.data.VO
 import kore.data.Union
 import kore.data.converter.KoreConverter.STRINGLIST_EMPTY
 import kore.data.converter.KoreConverter.OPTIONAL_NULL
@@ -19,28 +18,28 @@ import kotlin.reflect.KClass
 
 internal object KoreEncoder{
     class EncodeEnum(val enums:Array<*>, val value:Any):E(value)
-    class EncodeDataNoFieldAll(val data:Data): E(data)
-    class EncodeDataNoField(val data:Data, val field:String): E(data, field)
-    class EncodeDataNoValue(val data:Data): E(data)
-    class EncodeDataNoInitialized(val data:Data): E(data)
+    class EncodeDataNoFieldAll(val data:VO): E(data)
+    class EncodeDataNoField(val data:VO, val field:String): E(data, field)
+    class EncodeDataNoValue(val data:VO): E(data)
+    class EncodeDataNoInitialized(val data:VO): E(data)
     class EncodeNoEnum(val enums:Array<*>, val value:Any): E(enums, value)
     class EncodeInvalidUnion(val union: Union<*>, val it:Any):E(union, it)
     private inline fun encode(type:KClass<*>, v:Any, field: Field<*>):Wrap<String> = encoders[type]?.invoke(v, field) ?: W("$v")
     fun data(d:Any):Wrap<String>{
-        val data:Data = d as Data
+        val data:VO = d as VO
         val slowData:SlowData? = data as? SlowData
         val fields:HashMap<String, Field<*>> = slowData?._fields ?: Field[data::class] ?: return W(EncodeDataNoFieldAll(data))
         if(fields.isEmpty()) return W("|")
         val values:MutableMap<String, Any?> = data._values ?: return W(EncodeDataNoValue(data))
         if(fields.size != values.size) return W(EncodeDataNoInitialized(data))
-        val type:KClass<out Data> = data::class
+        val type:KClass<out VO> = data::class
         val result:ArrayList<String> = ArrayList(fields.size)
         repeat(fields.size){result.add("")}
         values.forEach{ (k,v) ->
             val field:Field<*> = fields[k] ?: return W(EncodeDataNoField(data, k))
-            val index:Int = Indexer.get(type, k)() ?: return W(Data.NoIndex(k))
+            val index:Int = Indexer.get(type, k)() ?: return W(VO.NoIndex(k))
             val task:Task? = slowData?._tasks?.get(index) ?: TaskStore(type, index)
-            val include: ((Data) -> Boolean)? = task?.include
+            val include: ((VO) -> Boolean)? = task?.include
             when{
                 include == Field.isOptional-> v ?: OPTIONAL_NULL
                 include?.invoke(data) == false-> null
@@ -151,7 +150,7 @@ internal object KoreEncoder{
         },
         UnionField::class to { v, field-> union(v, (field as UnionField<*>).union) },
         UnionListField::class to { v, field->
-            val un: Union<Data> = (field as UnionListField<*>).union
+            val un: Union<VO> = (field as UnionListField<*>).union
             var result = ""
             var error:Throwable? = null
             if((v as List<*>).all{ e ->
@@ -160,7 +159,7 @@ internal object KoreEncoder{
         },
         UnionMapField::class to { v, field->
             var result = ""
-            val un: Union<Data> = (field as UnionMapField<*>).union
+            val un: Union<VO> = (field as UnionMapField<*>).union
             var error:Throwable? = null
             if((v as Map<String, *>).all{ (k, it) ->
                 union(it!!, un).isEffected{ result += "|${encodeString(k)}|$it" }?.let{error = it} == null

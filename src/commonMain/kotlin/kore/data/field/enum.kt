@@ -2,7 +2,7 @@
 
 package kore.data.field
 
-import kore.data.Data
+import kore.data.VO
 import kotlin.reflect.KClass
 
 class EnumField<ENUM: Enum<ENUM>>(val enums:Array<ENUM>): Field<ENUM>(){
@@ -20,7 +20,7 @@ class EnumListField<ENUM: Enum<ENUM>>(val enums:Array<ENUM>): Field<MutableList<
             return fields.getOrPut(ENUM::class){EnumListField(enumValues<ENUM>())} as EnumListField<ENUM>
         }
     }
-    inline fun Data.default(noinline factory:(Data)->List<ENUM>){
+    inline fun VO.default(noinline factory:(VO)->List<ENUM>){
         _task?.default = factory
     }
 }
@@ -31,7 +31,7 @@ class EnumMapField<ENUM: Enum<ENUM>>(val enums:Array<ENUM>): Field<MutableMap<St
             return fields.getOrPut(ENUM::class){EnumMapField(enumValues<ENUM>())} as EnumMapField<ENUM>
         }
     }
-    inline fun Data.default(noinline factory:(Data)->Map<String, ENUM>){
+    inline fun VO.default(noinline factory:(VO)->Map<String, ENUM>){
         _task?.default = factory
     }
 }

@@ -1,6 +1,6 @@
 package data
 
-import kore.data.Data
+import kore.data.VO
 import kore.data.Union
 import kore.data.converter.decodeKore
 import kore.data.converter.encodeKore
@@ -8,7 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TestKoreDecode1 {
-    class Test1:Data(){
+    class Test1:VO(){
         var a by string
         var b by int
     }
@@ -23,7 +23,7 @@ class TestKoreDecode1 {
         assertEquals(t2()?.a, "hika")
         assertEquals(t2()?.b, 3)
     }
-    class Test2:Data(){
+    class Test2:VO(){
         var a by string
         var b by int
         var c by data(TestKoreDecode1::Test1)
@@ -45,7 +45,7 @@ class TestKoreDecode1 {
         assertEquals(t2()?.c?.a, "hika2")
         assertEquals(t2()?.c?.b, 4)
     }
-    class Test3:Data(){
+    class Test3:VO(){
         var a by string
         var b by stringList
         var c by int
@@ -88,7 +88,7 @@ class TestKoreDecode1 {
         assertEquals(t2()?.f?.get(1)?.a, "hika11")
         assertEquals(t2()?.f?.get(1)?.b, 11)
     }
-    class Test4:Data(){
+    class Test4:VO(){
         var a by string
         var b by stringMap
         var c by int
@@ -131,7 +131,7 @@ class TestKoreDecode1 {
         assertEquals(t2()?.f?.get("b")?.a, "hika11")
         assertEquals(t2()?.f?.get("b")?.b, 11)
     }
-    class Test5:Data(){
+    class Test5:VO(){
         enum class Enum{A,B,C}
         var a by enum<Enum>()
         var b by enumList<Enum>()
@@ -150,8 +150,8 @@ class TestKoreDecode1 {
         assertEquals(t2()?.b, arrayListOf(Test5.Enum.B, Test5.Enum.C))
         assertEquals(t2()?.c, hashMapOf("a" to Test5.Enum.A, "b" to Test5.Enum.B))
     }
-    class Test6:Data(){
-        sealed class TestUnion:Data(){
+    class Test6:VO(){
+        sealed class TestUnion:VO(){
             companion object: Union<TestUnion>({ A() }, { B() })
             class A: TestUnion(){
                 var c by data(TestKoreDecode1::Test1)

@@ -1,7 +1,7 @@
 package kore.data.field
 
-import kore.data.Data
+import kore.data.VO
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadWriteProperty
 
-typealias Prop<T> = PropertyDelegateProvider<Data, ReadWriteProperty<Data, T>>
+typealias Prop<T> = PropertyDelegateProvider<VO, ReadWriteProperty<VO, T>>
