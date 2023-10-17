@@ -1,10 +1,10 @@
 package kore.data.converter
 
-import kore.data.Data
+import kore.data.VO
 import kore.wrap.Wrap
 
 
 interface Converter<RESULT:Any>{
-    fun encode(data:Data):Wrap<RESULT>
-    fun <DATA:Data>decode(data:DATA, value:RESULT):Wrap<DATA>
+    fun encode(data:VO):Wrap<RESULT>
+    fun <DATA:VO>decode(data:DATA, value:RESULT):Wrap<DATA>
 }
