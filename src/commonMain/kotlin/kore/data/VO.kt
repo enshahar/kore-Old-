@@ -27,6 +27,7 @@ abstract class VO(useInstanceField:Boolean = false){
     companion object{
         private val _fields:HashMap<KClass<out VO>, HashMap<String, Field<*>>> = hashMapOf()
         private val _fieldOrder:HashMap<KClass<out VO>, ArrayList<String>> = hashMapOf()
+        fun fields(type:KClass<out VO>):ArrayList<String>? = _fieldOrder[type]
         @PublishedApi internal val _property: ReadWriteProperty<VO, Any> = object:ReadWriteProperty<VO, Any>{
             override fun getValue(vo: VO, property: KProperty<*>): Any {
                 val type: KClass<out VO> = vo::class
