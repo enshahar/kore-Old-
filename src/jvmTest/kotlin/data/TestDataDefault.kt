@@ -1,6 +1,7 @@
+package data
+
 import kore.data.SlowData
 import kore.data.Data
-import kore.data.converter.encodeKore
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals

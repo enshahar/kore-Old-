@@ -1,3 +1,5 @@
+package data
+
 import kore.data.Data
 import kore.data.Union
 import kore.data.converter.encodeKore
@@ -20,7 +22,7 @@ class TestKoreEncode1 {
     class Test2:Data(){
         var a by string
         var b by int
-        var c by data(::Test1)
+        var c by data(TestKoreEncode1::Test1)
     }
     @Test
     fun test2(){
@@ -39,8 +41,8 @@ class TestKoreEncode1 {
         var b by stringList
         var c by int
         var d by intList
-        var e by data(::Test1)
-        var f by dataList(::Test1)
+        var e by data(TestKoreEncode1::Test1)
+        var f by dataList(TestKoreEncode1::Test1)
     }
     @Test
     fun test3(){
@@ -71,8 +73,8 @@ class TestKoreEncode1 {
         var b by stringMap
         var c by int
         var d by intMap
-        var e by data(::Test1)
-        var f by dataMap(::Test1)
+        var e by data(TestKoreEncode1::Test1)
+        var f by dataMap(TestKoreEncode1::Test1)
     }
     @Test
     fun test4(){
@@ -115,11 +117,11 @@ class TestKoreEncode1 {
     }
     class Test6:Data(){
         sealed class TestUnion:Data(){
-            companion object: Union<TestUnion>(::A, ::B)
-            class A:TestUnion(){
-                var c by data(::Test1)
+            companion object: Union<TestUnion>(TestUnion::A, TestUnion::B)
+            class A: TestUnion(){
+                var c by data(TestKoreEncode1::Test1)
             }
-            class B:TestUnion(){
+            class B: TestUnion(){
                 var d by intList
             }
             var a by string

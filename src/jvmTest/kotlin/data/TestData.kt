@@ -1,3 +1,5 @@
+package data
+
 import kore.data.Data
 import kore.data.converter.encodeKore
 import org.junit.Test
@@ -13,7 +15,7 @@ class TestData {
         var b by intList
         var c by int
         var d by intMap
-        var e by data(::Response1)
+        var e by data(TestData::Response1)
     }
     @Test
     fun test1(){
