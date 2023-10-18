@@ -2,74 +2,8 @@
 
 package kore.data.field
 
-import kore.data.VO
-import kore.data.indexer.Indexer
-import kore.data.task.Task
-import kotlin.jvm.JvmInline
-import kotlin.properties.PropertyDelegateProvider
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KClass
-
-//companion object{
-//    @Suppress("NOTHING_TO_INLINE")
-//    inline fun isNotObjectField(cls:KClass<*>):Boolean = cls !in objectField
-//    val objectField:HashSet<KClass<*>> = hashSetOf(
-//        DataField::class, DataListField::class, DataMapField::class,
-//        UnionField::class, UnionListField::class, UnionMapField::class
-//    )
-//    val isInclude:VO.()->Boolean = { true }
-//    val isNotInclude:VO.()->Boolean = { false }
-//    val isOptional:VO.()->Boolean = { true }
-//}
-//    inline fun VO.default(value:VALUE){
-//        _task?.default = when(value){
-//            is Number, is String, is Boolean, is Enum<*>->value
-//            else->VO.DefaultNotValue(value).terminate()
-//        }
-//    }
-//    inline fun VO.default(value: VO.Immutable<VALUE>){
-//        _task?.default = value.value
-//    }
-//    @JvmInline
-//    value class Encoding(val task: Task?){
-//        inline fun isExcluded(){
-//            task?.run{ include = isNotInclude }
-//        }
-//        inline fun isOptional(){
-//            task?.run{ include = isOptional }
-//        }
-//        inline fun setResolver(noinline block:VO.()->Boolean){
-//            task?.run{ include = block }
-//        }
-//    }
-//    inline val VO.encoding: Encoding get() = Encoding(_task)
-////    inline fun Data.validator(vali:eVali){
-////        _task?.run{ this.vali = vali }
-////    }
-//    inline fun VO.get(noinline block:(VO, Any)->Any?){
-//        _task?.let{ task ->
-//            (task.getTasks ?: arrayListOf<(VO, Any)->Any?>().also{task.getTasks = it}).add(block)
-//        }
-//    }
-//    inline fun VO.set(noinline block:(VO, Any)->Any?){
-//        _task?.let{ task ->
-//            (task.setTasks ?: arrayListOf<(VO, Any)->Any?>().also{task.setTasks = it}).add(block)
-//        }
-//    }
-// 코딩시 주의사항:
-//  필드는 같은 타입에 대해 싱글턴으로 단 하나만 생기므로 필드안에 개별 객체 수준의 정보나 클래스 수준의 정보가
-//  들어가면 안된다. 객체 수준 정보는 엔티티 객체를 참조하고, 클래스 수준의 정보는 클래스 스토어를 참조하는 식으로 처리해야 한다.
 interface Field<VALUE:Any>
-object IntField: Field<Int>
-object UIntField: Field<UInt>
-object LongField: Field<Long>
-object ULongField: Field<ULong>
-object ShortField: Field<Short>
-object UShortField: Field<UShort>
-object FloatField: Field<Float>
-object DoubleField: Field<Double>
-object BooleanField: Field<Boolean>
-object StringField: Field<String>
+
 //object UtcField: Field<eUtc>() {
 //    @Suppress("NOTHING_TO_INLINE")
 //    inline fun Data.default(noinline factory:(Data)->eUtc){
