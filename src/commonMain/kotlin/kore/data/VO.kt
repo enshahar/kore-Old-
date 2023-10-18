@@ -79,9 +79,15 @@ abstract class VO(useInstanceField:Boolean = false){
             setTask(this, acc) ?: SetTaskFail(acc).terminate()
         } ?: value
     }
+    private var _index = 0
+    @PublishedApi internal var _lastIndex = -1
+    inline fun int(block: IntField.()->Unit = {}): Prop<Int> {
+        //IntField.firstTask()?.block()
+        return provider(IntField)
+    }
     /** lazy 필드 매칭용 인덱서 */
-//    @PublishedApi internal var _index = 0
-//    @PublishedApi internal var _lastIndex = -1
+
+
 //    @PublishedApi internal var _task: Task? = null
 //    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD?{
 //        val slowData:SlowData? = this as? SlowData
@@ -138,10 +144,7 @@ abstract class VO(useInstanceField:Boolean = false){
 //    inline val stringMap get() = stringMap()
 //
 //
-    inline fun int(block: IntField.()->Unit = {}): Prop<Int> {
-        //IntField.firstTask()?.block()
-        return provider(IntField)
-    }
+
 //    inline fun uint(block: UIntField.()->Unit = {}): Prop<UInt> {
 //        UIntField.firstTask()?.block()
 //        return UIntField.delegator
