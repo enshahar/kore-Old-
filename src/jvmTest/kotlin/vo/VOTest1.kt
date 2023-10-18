@@ -6,7 +6,9 @@ import kotlin.test.assertEquals
 
 class VOTest1 {
     class Test1:VO(){
-        var a by int()
+        var a by int{
+            d
+        }
     }
     @Test
     fun test1(){

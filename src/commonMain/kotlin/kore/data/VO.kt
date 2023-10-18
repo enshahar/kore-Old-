@@ -6,6 +6,7 @@ package kore.data
 
 import kore.error.E
 import kore.data.field.*
+import kore.data.task.IntTask
 //import kore.data.task.TaskStore
 import kore.data.task.Task
 import kotlin.jvm.JvmInline
@@ -25,17 +26,17 @@ abstract class VO(useInstanceField:Boolean = false){
     value class Immutable<T:Any>(val value:T)
 
     companion object{
-        private val _fields:HashMap<KClass<out VO>, HashMap<String, Field<*>>> = hashMapOf()
-        private val _fieldOrder:HashMap<KClass<out VO>, ArrayList<String>> = hashMapOf()
-        fun fields(type:KClass<out VO>):ArrayList<String>? = _fieldOrder[type]
+        @PublishedApi internal val _tasks:HashMap<KClass<out VO>, HashMap<String, Task>> = hashMapOf()
+        @PublishedApi internal val _fields:HashMap<KClass<out VO>, HashMap<String, Field<*>>> = hashMapOf()
+        @PublishedApi internal val _fieldOrder:HashMap<KClass<out VO>, ArrayList<String>> = hashMapOf()
+        fun fields(type:KClass<out VO>):List<String>? = _fieldOrder[type]
         @PublishedApi internal val _property: ReadWriteProperty<VO, Any> = object:ReadWriteProperty<VO, Any>{
             override fun getValue(vo: VO, property: KProperty<*>): Any {
-                val type: KClass<out VO> = vo::class
                 val name: String = property.name
-                val task:Task? = vo._tasks?.get(name) //?: TaskStore(type, name)
-                val result:Any = vo.props[name] ?: task?.getDefault(vo)?.let{
+                val task:Task? = vo._tasks?.get(name) //?: TaskStore(vo.type, name)
+                val result:Any = vo.values[name] ?: task?.default(vo)?.let{
                     vo[name] = it
-                    vo.props[name]
+                    vo.values[name]
                 } ?: NotInitialized(name).terminate()
                 return task?.getTasks?.fold(result){acc, getTask->
                     getTask(vo, acc) ?: GetTaskFail(acc).terminate()
@@ -47,12 +48,12 @@ abstract class VO(useInstanceField:Boolean = false){
         }
         @PublishedApi internal val _delegateProvider: PropertyDelegateProvider<VO, ReadWriteProperty<VO, Any>> = PropertyDelegateProvider{ vo, prop->
             val name: String = prop.name
-            val field:HashMap<String, Field<*>> = vo._fields ?: _fields.getOrPut(vo::class){
-                _fieldOrder[vo::class] = arrayListOf()
+            val field:HashMap<String, Field<*>> = vo._fields ?: _fields.getOrPut(vo.type){
+                _fieldOrder[vo.type] = arrayListOf()
                 hashMapOf()
             }
             if(name !in field){
-                _fieldOrder[vo::class]?.add(name)
+                _fieldOrder[vo.type]?.add(name)
                 field[name] = vo.temp as Field<*>
                 vo.values[name] = null
             }
@@ -63,31 +64,35 @@ abstract class VO(useInstanceField:Boolean = false){
             return _delegateProvider as Prop<VALUE>
         }
     }
-    @PublishedApi internal var temp:Any = 0
     /** 실제 값을 보관하는 저장소 */
     @PublishedApi internal var _values:MutableMap<String, Any?>? = null
-    /** 외부에 표출되는 저장소 */
     @PublishedApi internal inline val values:MutableMap<String, Any?> get() = _values ?: hashMapOf<String, Any?>().also{ _values = it }
+    /** 외부에 표출되는 저장소 */
     inline val props:Map<String, Any?> get() = values
     /** 인스턴스 필드 저장소를 쓸 경우 */
     @PublishedApi internal val _fields:HashMap<String, Field<*>>? = if(useInstanceField) hashMapOf() else null
     @PublishedApi internal val _tasks:HashMap<String, Task>? = if(useInstanceField) hashMapOf() else null
     operator fun set(name:String, value:Any){
-        val type: KClass<out VO> = this::class
         val task:Task? = _tasks?.get(name) //?: TaskStore(type, name)
         values[name] = task?.setTasks?.fold(value){acc, setTask->
             setTask(this, acc) ?: SetTaskFail(acc).terminate()
         } ?: value
     }
-    private var _index = 0
-    @PublishedApi internal var _lastIndex = -1
-    inline fun int(block: IntField.()->Unit = {}): Prop<Int> {
-        //IntField.firstTask()?.block()
+    @PublishedApi internal var _type:KClass<out VO>? = null
+    @PublishedApi internal inline val type:KClass<out VO> get() = _type ?: this::class.also { _type = it }
+    /** lazy 필드 매칭용 인덱서 */
+    @PublishedApi internal var _index = 0
+
+    @PublishedApi internal var _vField:Field<*>? = null
+    @PublishedApi internal var _vTask:Task? = null
+//    @PublishedApi internal var _lastIndex = -1
+    inline fun int(block: IntTask.()->Unit): Prop<Int> {
+        val names = _fieldOrder[type]
+        if(names == null || names.size <= _index) IntTask().also{_vTask = it}.block()
+        _index++
+        _vField = IntField
         return provider(IntField)
     }
-    /** lazy 필드 매칭용 인덱서 */
-
-
 //    @PublishedApi internal var _task: Task? = null
 //    inline fun <FIELD: Field<*>> FIELD.firstTask():FIELD?{
 //        val slowData:SlowData? = this as? SlowData
