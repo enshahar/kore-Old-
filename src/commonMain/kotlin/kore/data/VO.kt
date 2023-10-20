@@ -90,7 +90,7 @@ abstract class VO(useInstanceField:Boolean = false){ /** 인스턴스에서 필�
          * 한 번이라도 델리게이터프로바이더가 호출되었다면 그 때마다 속성을 __keys__에 업데이트하면서 이를 voKey에도 계속 넣어줌
          * __시리즈는 전부 인스턴스 생성시에만 사용되는 인스턴스 저장소라 동시성 문제가 없음
          * 단 voXXX시리즈는 최초 VO타입별 생성시에 동시성 이슈가 생길 수 있으나
-         * map계열은 같은 값을 덮을 뿐이고 유일한 
+         * map계열은 같은 값을 덮을 뿐이고 속성명 리스트는 경쟁하는 각 인스턴스가 자기 내부의 리스트를 게속 업데이트함
          */
         if(__index__ == -1 || _voKeys[type]?.size == __index__ + 1) task().also{__task__ = it}.block()
         return delegate(field)
@@ -156,13 +156,7 @@ abstract class VO(useInstanceField:Boolean = false){ /** 인스턴스에서 필�
 //        return UnionMapField[union].delegator
 //    }
 
-//    inline fun intMap(vararg items:Pair<String, Int>, block: IntMapField.()->Unit = {}): Prop<HashMap<String, Int>> {
-//        IntMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, Int>(items.size).also{it.putAll(items)}}
-//        }
-//        return IntMapField.delegator
-//    }
+
 //    inline fun uintMap(vararg items:Pair<String, UInt>, block: UIntMapField.()->Unit = {}): Prop<HashMap<String, UInt>> {
 //        UIntMapField.firstTask()?.apply{
 //            block()

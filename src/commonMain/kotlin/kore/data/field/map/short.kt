@@ -6,15 +6,21 @@ import kore.data.VO
 import kore.data.field.Field
 import kore.data.field.Prop
 import kore.data.task.Task
+import kore.data.task.Task.Default
 
-object ShortListField: Field<MutableList<Short>> {
+object ShortMapField: Field<MutableMap<String, Short>> {
     class T: Task(){
-        fun default(v:MutableList<Short>){
-            _default = Task.Default{_,_->ArrayList<Short>(v.size).also{it.addAll(v)}}
+        fun default(v:MutableMap<String, Short>){
+            _default = Default{_,_->HashMap<String, Short>(v.size).also{it.putAll(v)}}
+        }
+        fun default(vararg v:Pair<String, Short>){
+            _default = Default{_,_->HashMap<String, Short>(v.size).also{it.putAll(v)}}
         }
     }
 }
-inline val VO.shortList:Prop<MutableList<Short>> get() = delegate(ShortListField)
-inline fun VO.shortList(v:MutableList<Short>):Prop<MutableList<Short>>
-        = delegate(ShortListField){ShortListField.T().also{it.default(v)}}
-inline fun VO.shortList(block: ShortListField.T.()->Unit):Prop<MutableList<Short>> = delegate(ShortListField, block){ShortListField.T()}
+inline val VO.shortMap:Prop<MutableMap<String, Short>> get() = delegate(ShortMapField)
+inline fun VO.shortMap(v:MutableMap<String, Short>):Prop<MutableMap<String, Short>>
+        = delegate(ShortMapField){ShortMapField.T().also{it.default(v)}}
+inline fun VO.shortMap(vararg v:Pair<String, Short>):Prop<MutableMap<String, Short>>
+        = delegate(ShortMapField){ShortMapField.T().also{it.default(*v)}}
+inline fun VO.shortMap(block: ShortMapField.T.()->Unit):Prop<MutableMap<String, Short>> = delegate(ShortMapField, block){ShortMapField.T()}

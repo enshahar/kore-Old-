@@ -6,15 +6,21 @@ import kore.data.VO
 import kore.data.field.Field
 import kore.data.field.Prop
 import kore.data.task.Task
+import kore.data.task.Task.Default
 
-object ULongListField: Field<MutableList<ULong>> {
+object ULongMapField: Field<MutableMap<String, ULong>> {
     class T: Task(){
-        fun default(v:MutableList<ULong>){
-            _default = Task.Default{_,_->ArrayList<ULong>(v.size).also{it.addAll(v)}}
+        fun default(v:MutableMap<String, ULong>){
+            _default = Default{_,_->HashMap<String, ULong>(v.size).also{it.putAll(v)}}
+        }
+        fun default(vararg v:Pair<String, ULong>){
+            _default = Default{_,_->HashMap<String, ULong>(v.size).also{it.putAll(v)}}
         }
     }
 }
-inline val VO.ulongList:Prop<MutableList<ULong>> get() = delegate(ULongListField)
-inline fun VO.ulongList(v:MutableList<ULong>):Prop<MutableList<ULong>>
-        = delegate(ULongListField){ULongListField.T().also{it.default(v)}}
-inline fun VO.ulongList(block: ULongListField.T.()->Unit):Prop<MutableList<ULong>> = delegate(ULongListField, block){ULongListField.T()}
+inline val VO.ulongMap:Prop<MutableMap<String, ULong>> get() = delegate(ULongMapField)
+inline fun VO.ulongMap(v:MutableMap<String, ULong>):Prop<MutableMap<String, ULong>>
+        = delegate(ULongMapField){ULongMapField.T().also{it.default(v)}}
+inline fun VO.ulongMap(vararg v:Pair<String, ULong>):Prop<MutableMap<String, ULong>>
+        = delegate(ULongMapField){ULongMapField.T().also{it.default(*v)}}
+inline fun VO.ulongMap(block: ULongMapField.T.()->Unit):Prop<MutableMap<String, ULong>> = delegate(ULongMapField, block){ULongMapField.T()}

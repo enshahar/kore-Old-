@@ -6,15 +6,21 @@ import kore.data.VO
 import kore.data.field.Field
 import kore.data.field.Prop
 import kore.data.task.Task
+import kore.data.task.Task.Default
 
-object IntListField: Field<MutableList<Int>> {
+object IntMapField: Field<MutableMap<String, Int>> {
     class T: Task(){
-        fun default(v:MutableList<Int>){
-            _default = Task.Default{_,_->ArrayList<Int>(v.size).also{it.addAll(v)}}
+        fun default(v:MutableMap<String, Int>){
+            _default = Default{_,_->HashMap<String, Int>(v.size).also{it.putAll(v)}}
+        }
+        fun default(vararg v:Pair<String, Int>){
+            _default = Default{_,_->HashMap<String, Int>(v.size).also{it.putAll(v)}}
         }
     }
 }
-inline val VO.intList:Prop<MutableList<Int>> get() = delegate(IntListField)
-inline fun VO.intList(v:MutableList<Int>):Prop<MutableList<Int>>
-        = delegate(IntListField){IntListField.T().also{it.default(v)}}
-inline fun VO.intList(block: IntListField.T.()->Unit):Prop<MutableList<Int>> = delegate(IntListField, block){IntListField.T()}
+inline val VO.intMap:Prop<MutableMap<String, Int>> get() = delegate(IntMapField)
+inline fun VO.intMap(v:MutableMap<String, Int>):Prop<MutableMap<String, Int>>
+        = delegate(IntMapField){IntMapField.T().also{it.default(v)}}
+inline fun VO.intMap(vararg v:Pair<String, Int>):Prop<MutableMap<String, Int>>
+        = delegate(IntMapField){IntMapField.T().also{it.default(*v)}}
+inline fun VO.intMap(block: IntMapField.T.()->Unit):Prop<MutableMap<String, Int>> = delegate(IntMapField, block){IntMapField.T()}
