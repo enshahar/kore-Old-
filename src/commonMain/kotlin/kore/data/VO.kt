@@ -65,6 +65,10 @@ abstract class VO(useInstanceField:Boolean = false){ /** 인스턴스에서 필�
     /** 실제 값을 보관하는 저장소 */
     @PublishedApi internal var _values:MutableMap<String, Any?>? = null
     @PublishedApi internal inline val values:MutableMap<String, Any?> get() = _values ?: hashMapOf<String, Any?>().also{ _values = it }
+    override fun toString(): String =
+"""${super.toString()}-${values.toList().joinToString {(k,v)->"$k:$v"}}    
+"""
+
     /** 속성 setter*/
     operator fun set(key:String, value:Any){
         values[key] = getTask(key)?.setFold(this, key, value) ?: value
@@ -107,42 +111,6 @@ abstract class VO(useInstanceField:Boolean = false){ /** 인스턴스에서 필�
         __field__ = field
         return _delegateProvider as Prop<VALUE>
     }
-//    val enums = hashMapOf<KClass<*>, Array<*>>()
-//    inline fun <reified ENUM:Enum<ENUM>> enum(block: EnumField<ENUM>.()->Unit = {}): Prop<ENUM> {
-//        if(ENUM::class !in enums) enums[ENUM::class] = enumValues<ENUM>()
-//        EnumField<ENUM>().firstTask()?.block()
-//        return EnumField<ENUM>().delegator
-//    }
-//    inline fun <reified ENUM:Enum<ENUM>> enumList(block: EnumListField<ENUM>.()->Unit = {}): Prop<MutableList<ENUM>> {
-//        if(ENUM::class !in enums) enums[ENUM::class] = enumValues<ENUM>()
-//        EnumListField<ENUM>().firstTask()?.block()
-//        return EnumListField<ENUM>().delegator
-//    }
-//    inline fun <reified ENUM:Enum<ENUM>> enumMap(block: EnumMapField<ENUM>.()->Unit = {}): Prop<MutableMap<String, ENUM>> {
-//        if(ENUM::class !in enums) enums[ENUM::class] = enumValues<ENUM>()
-//        EnumMapField<ENUM>().firstTask()?.block()
-//        return EnumMapField<ENUM>().delegator
-//    }
-//    inline fun <reified DATA: VO> data(noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
-//        DataField[factory].firstTask()?.block()
-//        return DataField[factory].delegator
-//    }
-//    inline fun <DATA: VO> data(cls:KClass<DATA>, noinline factory:()->DATA, block: DataField<DATA>.()->Unit = {}): Prop<DATA> {
-//        DataField[cls, factory].firstTask()?.block()
-//        return DataField[cls, factory].delegator
-//    }
-//    inline fun <reified DATA: VO> dataList(noinline factory:()->DATA, block: DataListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
-//        DataListField[factory].firstTask()?.block()
-//        return DataListField[factory].delegator
-//    }
-//    inline fun <reified DATA: VO> dataMap(noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
-//        DataMapField[factory].firstTask()?.block()
-//        return DataMapField[factory].delegator
-//    }
-//    inline fun <DATA: VO> dataMap(cls:KClass<DATA>, noinline factory:()->DATA, block: DataMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
-//        DataMapField[cls, factory].firstTask()?.block()
-//        return DataMapField[cls, factory].delegator
-//    }
 //    inline fun <reified DATA: VO> union(union: Union<DATA>, block: UnionField<DATA>.()->Unit = {}): Prop<DATA> {
 //        UnionField[union].firstTask()?.block()
 //        return UnionField[union].delegator

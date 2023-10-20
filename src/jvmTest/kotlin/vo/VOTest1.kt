@@ -1,9 +1,11 @@
 package vo
 
 import kore.data.VO
-import kore.data.field.enum.enum
-import kore.data.field.enum.enumList
-import kore.data.field.enum.enumMap
+import kore.data.VOSum
+import kore.data.field.*
+import kore.data.field.enum
+import kore.data.field.enumList
+import kore.data.field.enumMap
 import kore.data.field.list.doubleList
 import kore.data.field.map.stringMap
 import kore.data.field.value.int
@@ -16,6 +18,13 @@ class VOTest1 {
         A,B,C
     }
     class Test1:VO(){
+        class Sub1:VO()
+        sealed class Sum1:VO(){
+            class V1:Sum1()
+            class V2:Sum1()
+            class V3:Sum1()
+            companion object:VOSum<Sum1>(::V1, ::V2, ::V3)
+        }
         var a1 by int{
             default(3)
         }
@@ -34,6 +43,13 @@ class VOTest1 {
         var d3 by enumList<Enum1>(arrayListOf(Enum1.A, Enum1.B, Enum1.C) )
         var d4 by enumMap<Enum1>("a" to Enum1.A, "b" to Enum1.B)
         var d5 by enumMap<Enum1>(hashMapOf("a" to Enum1.A, "b" to Enum1.B))
+
+        var e1 by vo(::Sub1)
+        var e2 by voListDefault(::Sub1){arrayListOf(Sub1(), Sub1())}
+        var e3 by voMapDefault(::Sub1){hashMapOf("a" to Sub1(), "b" to Sub1())}
+        var f1 by sum(Sum1)
+        var f2 by sumListDefault(Sum1){arrayListOf(Sum1.V1(), Sum1.V2())}
+        var f3 by sumMapDefault(Sum1){hashMapOf("a" to Sum1.V1(), "b" to Sum1.V2())}
 
     }
     @Test
@@ -57,6 +73,13 @@ class VOTest1 {
         assertEquals(vo1.d3, arrayListOf(Enum1.A, Enum1.B, Enum1.C))
         assertEquals(vo1.d4, hashMapOf("a" to Enum1.A, "b" to Enum1.B))
         assertEquals(vo1.d5, hashMapOf("a" to Enum1.A, "b" to Enum1.B))
+        assertFails { vo1.e1 }
+        assertEquals(vo1.e2.size, 2)
+        assertEquals(vo1.e3.size, 2)
+        assertFails { vo1.f1 }
+        assertEquals(vo1.f2.size, 2)
+        assertEquals(vo1.f3.size, 2)
+        println(vo1)
         assertEquals(vo2.a1, 3)
         assertFails { vo2.a2 }
         assertEquals(vo2.a3, 10)

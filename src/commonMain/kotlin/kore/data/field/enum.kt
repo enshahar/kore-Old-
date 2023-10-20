@@ -1,10 +1,8 @@
 @file:Suppress("UNCHECKED_CAST", "NOTHING_TO_INLINE")
 
-package kore.data.field.enum
+package kore.data.field
 
 import kore.data.VO
-import kore.data.field.Field
-import kore.data.field.Prop
 import kore.data.task.Task
 import kore.data.task.Task.Default
 import kotlin.reflect.KClass
@@ -46,8 +44,8 @@ inline fun <reified ENUM:Enum<ENUM>> VO.enumList(v:MutableList<ENUM>): Prop<Muta
 = delegate(EnumListField()){ EnumListField.T<ENUM>().also{it.default(v)}}
 inline fun <reified ENUM:Enum<ENUM>> VO.enumList(vararg v:ENUM): Prop<MutableList<ENUM>>
 = delegate(EnumListField()){ EnumListField.T<ENUM>().also{it.default(*v)}}
-inline fun <reified ENUM:Enum<ENUM>> VO.enumList(block: EnumListField.T<ENUM>.()->Unit): Prop<MutableList<ENUM>> = delegate(
-    EnumListField(), block){ EnumListField.T() }
+inline fun <reified ENUM:Enum<ENUM>> VO.enumList(block: EnumListField.T<ENUM>.()->Unit): Prop<MutableList<ENUM>>
+= delegate(EnumListField(), block){ EnumListField.T() }
 class EnumMapField<ENUM: Enum<ENUM>>(val enums:Array<ENUM>): Field<MutableMap<String, ENUM>> {
     class T<ENUM: Enum<ENUM>>: Task(){
         fun default(v:MutableMap<String, ENUM>){
