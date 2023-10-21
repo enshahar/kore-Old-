@@ -2,7 +2,7 @@
 //
 //import kore.data.VO
 //import kore.data.Union
-//import kore.data.converter.encodeKore
+//import kore.vo.converter.encodeKore
 //import kotlin.test.Test
 //import kotlin.test.assertEquals
 //

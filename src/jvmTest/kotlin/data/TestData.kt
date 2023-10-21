@@ -1,7 +1,7 @@
 //package data
 //
 //import kore.data.VO
-//import kore.data.converter.encodeKore
+//import kore.vo.converter.encodeKore
 //import org.junit.Test
 //import kotlin.test.assertEquals
 //

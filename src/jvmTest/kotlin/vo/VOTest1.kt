@@ -1,14 +1,17 @@
 package vo
 
-import kore.data.VO
-import kore.data.VOSum
-import kore.data.field.*
-import kore.data.field.enum
-import kore.data.field.enumList
-import kore.data.field.enumMap
-import kore.data.field.list.doubleList
-import kore.data.field.map.stringMap
-import kore.data.field.value.int
+import kore.vo.VO
+import kore.vo.VOSum
+import kore.vo.field.*
+import kore.vo.field.enum
+import kore.vo.field.enumList
+import kore.vo.field.enumMap
+import kore.vo.field.list.doubleList
+import kore.vo.field.map.stringMap
+import kore.vo.field.value.boolean
+import kore.vo.field.value.double
+import kore.vo.field.value.int
+import kore.vo.field.value.string
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
@@ -83,5 +86,55 @@ class VOTest1 {
         assertEquals(vo2.a1, 3)
         assertFails { vo2.a2 }
         assertEquals(vo2.a3, 10)
+    }
+    class Test2:VO(){
+        var a by int
+        var b by string
+        var c by boolean
+    }
+    @Test
+    fun test2(){
+        (1..100).forEach {
+            Thread{
+                println("a")
+                Test2()
+            }.start()
+        }
+        Thread{
+            Thread.sleep(200)
+            assertEquals(VO.fields(Test2::class), arrayListOf("a", "b", "c"))
+        }
+    }
+    sealed class Test3Sum:VO(){
+        companion object:VOSum<Test3Sum>(::Sub1, ::Sub2, ::Sub3)
+        var a by int(3)
+        class Sub1:Test3Sum(){
+            var b by string("sub1")
+        }
+        class Sub2:Test3Sum(){
+            var c by double(10.5)
+        }
+        class Sub3:Test3Sum(){
+            var d by boolean(true)
+        }
+    }
+    class Test3:VO(){
+        var a by sumList(Test3Sum)
+    }
+    @Test
+    fun test3(){
+        val vo1 = Test3()
+        vo1.a = arrayListOf(
+            Test3Sum.Sub1().also {
+                it.a = 3
+            },
+            Test3Sum.Sub2().also {
+                it.a = 10
+            },
+            Test3Sum.Sub3().also {
+                it.a = 20
+            }
+        )
+
     }
 }
