@@ -77,6 +77,6 @@ object VOSN: Converter<String> {
     fun setDecoder(type:KClass<*>,block:(cursor: Cursor, field: Field<*>)->Wrap<Any>){
         VOSNfrom.decoders[type] = block
     }
-    override fun to(data: VO):Wrap<String> = VOSNto.data(data)
+    override fun to(data: VO):Wrap<String> = VOSNto.vo(data)
     override fun <V: VO> from(data:V, value: String):Wrap<V> = VOSNfrom.data(Cursor(value, 0), data)
 }

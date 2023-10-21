@@ -23,12 +23,7 @@ abstract class VO(useInstanceField:Boolean = false){ /** 인스턴스에서 필�
         fun fields(type:KClass<out VO>):List<String>? = _voKeys[type]
         /** 모든 VO가 사용하는 델리게이트*/
         @PublishedApi internal val _delegate: ReadWriteProperty<VO, Any> = object:ReadWriteProperty<VO, Any>{
-            override fun getValue(vo: VO, property: KProperty<*>): Any {
-                val key:String = property.name
-                val task:Task? = vo.getTask(key)
-                val result:Any = vo.values[key] ?: task?.getDefault(vo, key) ?: Task.NoDefault(vo, key).terminate()
-                return task?.getFold(vo, key, result) ?: result
-            }
+            override fun getValue(vo: VO, property: KProperty<*>): Any = vo[property.name] ?: Task.NoDefault(vo, property.name).terminate()
             override fun setValue(vo: VO, property: KProperty<*>, value: Any){ vo[property.name] = value }
         }
         /** 모든 VO가 사용하는 델리게이트 프로바이더*/
@@ -69,16 +64,22 @@ abstract class VO(useInstanceField:Boolean = false){ /** 인스턴스에서 필�
 """${super.toString()}-${values.toList().joinToString {(k,v)->"$k:$v"}}    
 """
 
-    /** 속성 setter*/
+    /** 속성 getter, setter*/
     operator fun set(key:String, value:Any){
         values[key] = getTask(key)?.setFold(this, key, value) ?: value
     }
+    operator fun get(key:String):Any? = getTask(key)?.let{
+        (values[key] ?: it.getDefault(this, key))?.let{v->it.getFold(this, key, v)}
+    } ?: values[key]
+
     /** 외부에 표출되는 저장소 */
     inline val props:Map<String, Any?> get() = values
     /** 인스턴스 필드 저장소를 쓸 경우 */
     @PublishedApi internal val _fields:HashMap<String, Field<*>>? = if(useInstanceField) hashMapOf() else null
     @PublishedApi internal val _tasks:HashMap<String, Task>? = if(useInstanceField) hashMapOf() else null
-    @PublishedApi internal inline fun getTask(name:String):Task? = (_tasks ?: _voTasks[type])?.get(name)
+    @PublishedApi internal inline fun getTask(name:String):Task? = getTasks()?.get(name)
+    @PublishedApi internal inline fun getTasks():HashMap<String, Task>? = _tasks ?: _voTasks[type]
+    @PublishedApi internal inline fun getFields():HashMap<String, Field<*>>? = _fields ?: _voFields[type]
     /** ::class 캐쉬용 */
     @PublishedApi internal var _type:KClass<out VO>? = null
     inline val type:KClass<out VO> get() = _type ?: this::class.also { _type = it }
@@ -111,102 +112,4 @@ abstract class VO(useInstanceField:Boolean = false){ /** 인스턴스에서 필�
         __field__ = field
         return _delegateProvider as Prop<VALUE>
     }
-//    inline fun <reified DATA: VO> union(union: Union<DATA>, block: UnionField<DATA>.()->Unit = {}): Prop<DATA> {
-//        UnionField[union].firstTask()?.block()
-//        return UnionField[union].delegator
-//    }
-//    inline fun <reified DATA: VO> unionList(union: Union<DATA>, block: UnionListField<DATA>.()->Unit = {}): Prop<MutableList<DATA>> {
-//        UnionListField[union].firstTask()?.block()
-//        return UnionListField[union].delegator
-//    }
-//    inline fun <reified DATA: VO> unionMap(union: Union<DATA>, block: UnionMapField<DATA>.()->Unit = {}): Prop<MutableMap<String, DATA>> {
-//        UnionMapField[union].firstTask()?.block()
-//        return UnionMapField[union].delegator
-//    }
-
-
-//    inline fun uintMap(vararg items:Pair<String, UInt>, block: UIntMapField.()->Unit = {}): Prop<HashMap<String, UInt>> {
-//        UIntMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, UInt>(items.size).also{it.putAll(items)}}
-//        }
-//        return UIntMapField.delegator
-//    }
-//    inline fun longMap(vararg items:Pair<String, Long>, block: LongMapField.()->Unit = {}): Prop<HashMap<String, Long>> {
-//        LongMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, Long>(items.size).also{it.putAll(items)}}
-//        }
-//        return LongMapField.delegator
-//    }
-//    inline fun ulongMap(vararg items:Pair<String, ULong>, block: ULongMapField.()->Unit = {}): Prop<HashMap<String, ULong>> {
-//        ULongMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, ULong>(items.size).also{it.putAll(items)}}
-//        }
-//        return ULongMapField.delegator
-//    }
-//    inline fun shortMap(vararg items:Pair<String, Short>, block: ShortMapField.()->Unit = {}): Prop<HashMap<String, Short>> {
-//        ShortMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, Short>(items.size).also{it.putAll(items)}}
-//        }
-//        return ShortMapField.delegator
-//    }
-//    inline fun ushortMap(vararg items:Pair<String, UShort>, block: UShortMapField.()->Unit = {}): Prop<HashMap<String, UShort>> {
-//        UShortMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, UShort>(items.size).also{it.putAll(items)}}
-//        }
-//        return UShortMapField.delegator
-//    }
-//    inline fun floatMap(vararg items:Pair<String, Float>, block: FloatMapField.()->Unit = {}): Prop<HashMap<String, Float>> {
-//        FloatMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, Float>(items.size).also{it.putAll(items)}}
-//        }
-//        return FloatMapField.delegator
-//    }
-//    inline fun doubleMap(vararg items:Pair<String, Double>, block: DoubleMapField.()->Unit = {}): Prop<HashMap<String, Double>> {
-//        DoubleMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, Double>(items.size).also{it.putAll(items)}}
-//        }
-//        return DoubleMapField.delegator
-//    }
-//    inline fun booleanMap(vararg items:Pair<String, Boolean>, block: BooleanMapField.()->Unit = {}): Prop<HashMap<String, Boolean>> {
-//        BooleanMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, Boolean>(items.size).also{it.putAll(items)}}
-//        }
-//        return BooleanMapField.delegator
-//    }
-//    inline fun stringMap(vararg items:Pair<String, String>, block: StringMapField.()->Unit = {}): Prop<HashMap<String, String>> {
-//        StringMapField.firstTask()?.apply{
-//            block()
-//            default{HashMap<String, String>(items.size).also{it.putAll(items)}}
-//        }
-//        return StringMapField.delegator
-//    }
-//    inline fun <reified ENUM:Enum<ENUM>> enum(v:ENUM, block: EnumField<ENUM>.()->Unit = {}): Prop<ENUM> {
-//        EnumField<ENUM>().firstTask()?.apply{
-//            block()
-//            default(v)
-//        }
-//        return EnumField<ENUM>().delegator
-//    }
-//    inline fun <reified ENUM:Enum<ENUM>> enumList(vararg items:ENUM, block: EnumListField<ENUM>.()->Unit = {}): Prop<MutableList<ENUM>> {
-//        EnumListField<ENUM>().firstTask()?.apply{
-//            block()
-//            default{ArrayList<ENUM>(items.size).also{it.addAll(items)}}
-//        }
-//        return EnumListField<ENUM>().delegator
-//    }
-//    inline fun <reified ENUM:Enum<ENUM>> enumMap(vararg items:Pair<String, ENUM>, block: EnumMapField<ENUM>.()->Unit = {}): Prop<MutableMap<String, ENUM>> {
-//        EnumMapField<ENUM>().firstTask()?.apply{
-//            block()
-//            default{HashMap<String, ENUM>(items.size).also{it.putAll(items)}}
-//        }
-//        return EnumMapField<ENUM>().delegator
-//    }
 }

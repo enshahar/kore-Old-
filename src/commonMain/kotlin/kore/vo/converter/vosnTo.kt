@@ -13,6 +13,7 @@ import kore.vo.VOSum
 import kore.vo.field.list.*
 import kore.vo.field.map.*
 import kore.vo.field.value.StringField
+import kore.vo.task.Task.Companion._optinal
 import kore.wrap.W
 import kore.wrap.Wrap
 import kotlin.reflect.KClass
@@ -26,30 +27,32 @@ internal object VOSNto{
     class EncodeNoEnum(val enums:Array<*>, val value:Any): E(enums, value)
     class EncodeInvalidUnion(val sum: VOSum<*>, val it:Any):E(sum, it)
     private inline fun encode(type:KClass<*>, v:Any, field: Field<*>):Wrap<String> = encoders[type]?.invoke(v, field) ?: W("$v")
-    fun data(d:Any):Wrap<String>{
-        val data:VO = d as VO
-        val slowData:SlowData? = data as? SlowData
-        val fields:HashMap<String, Field<*>> = slowData?._fields ?: Field[data::class] ?: return W(EncodeDataNoFieldAll(data))
-        if(fields.isEmpty()) return W("|")
-        val values:MutableMap<String, Any?> = data._values ?: return W(EncodeDataNoValue(data))
-        if(fields.size != values.size) return W(EncodeDataNoInitialized(data))
-        val type:KClass<out VO> = data::class
-        val result:ArrayList<String> = ArrayList(fields.size)
-        repeat(fields.size){result.add("")}
-        values.forEach{ (k,v) ->
-            val field:Field<*> = fields[k] ?: return W(EncodeDataNoField(data, k))
-            val index:Int = Indexer.get(type, k)() ?: return W(VO.NoIndex(k))
-            val task:Task? = slowData?._tasks?.get(index) ?: TaskStore(type, index)
-            val include: ((VO) -> Boolean)? = task?.include
+    fun vo(d:Any):Wrap<String>{
+        val vo:VO = d as VO
+        val fields:HashMap<String, Field<*>> = vo.getFields() ?: return W(EncodeDataNoInitialized(vo))
+        val tasks: HashMap<String, Task> = vo.getTasks() ?: return W(EncodeDataNoInitialized(vo))
+        return VO.fields(vo.type)?.joinToString("") {key->
+            val task: Task? = tasks[key]
+            val include: ((String, Any?) -> Boolean)? = task?.include
+            val v = vo[key]
+            v?.let {
+                if(include?.invoke(key, v) == false) "" else {
+                    encode(field::class, value, field).effect {
+                        result[index] = it
+                    }
+                    ""
+                }
+            } ?: if(include == _optinal) OPTIONAL_NULL else ""
+        }?.let{W(it)} ?: W(EncodeDataNoInitialized(vo))
+
+
             when{
                 include == Field.isOptional-> v ?: OPTIONAL_NULL
-                include?.invoke(data) == false-> null
-                else-> v ?: task?.getDefault(data) ?:return W(EncodeDataNoField(data, k))
+                include?.invoke(vo) == false-> null
+                else-> v ?: task?.getDefault(vo) ?:return W(EncodeDataNoField(vo, k))
             }?.let{value->
                 if(value == OPTIONAL_NULL) result[index] = OPTIONAL_NULL
-                else encode(field::class, value, field).effect {
-                    result[index] = it
-                }
+                else
             }
         }
         return W(result.joinToString("|", postfix="|"))
@@ -58,7 +61,7 @@ internal object VOSNto{
         val type:KClass<out Any> = it::class
         val index:Int = union.type.indexOf(type)
         return if(index == -1) W(EncodeInvalidUnion(union, it))
-        else data(it).map{
+        else vo(it).map{
             index.toString() + (if(it.isNotBlank()) "|$it" else "")
         }
     }
@@ -134,19 +137,19 @@ internal object VOSNto{
                 }
             }) W(result(result)) else W(EncodeEnum(enums, error!!))
         },
-        VOField::class to { v, _-> data(v) },
+        VOField::class to { v, _-> vo(v) },
         VOListField::class to { v, _->
             var result = ""
             var error:Throwable? = null
             if((v as List<*>).all { e ->
-                data(e!!).isEffected{ result += "|$it" }?.let{error = it} == null
+                vo(e!!).isEffected{ result += "|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         },
         VOMapField::class to { v, _->
             var result = ""
             var error:Throwable? = null
             if((v as Map<String, *>).all { (k, it) ->
-                data(it!!).isEffected{ result += "|${encodeString(k)}|$it" }?.let{error = it} == null
+                vo(it!!).isEffected{ result += "|${encodeString(k)}|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         },
         VOSumField::class to { v, field-> union(v, (field as VOSumField<*>).sum) },
