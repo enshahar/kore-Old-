@@ -11,8 +11,8 @@ import kotlin.reflect.KClass
 
 
 
-inline fun VO.toVOSN():Wrap<String> = VOSN.encode(this)
-inline fun <V:VO> V.fromVOSN(vosn:String):Wrap<V> = VOSN.decode(this, vosn)
+inline fun VO.toVOSN():Wrap<String> = VOSN.to(this)
+inline fun <V:VO> V.fromVOSN(vosn:String):Wrap<V> = VOSN.from(this, vosn)
 
 object VOSN: Converter<String> {
     const val OPTIONAL_NULL: String = "~"
@@ -74,9 +74,9 @@ object VOSN: Converter<String> {
     fun setEncoder(type:KClass<*>,block:(Any, Field<*>)->Wrap<String>){
         VOSNto.encoders[type] = block
     }
-    fun setDecoder(type:KClass<*>,block:(cursor: Cursor, field: Field<*>)->Wrap<Any>){
-        VOSNfrom.decoders[type] = block
-    }
+//    fun setDecoder(type:KClass<*>,block:(cursor: Cursor, field: Field<*>)->Wrap<Any>){
+//        VOSNfrom.decoders[type] = block
+//    }
     override fun to(data: VO):Wrap<String> = VOSNto.vo(data)
-    override fun <V: VO> from(data:V, value: String):Wrap<V> = VOSNfrom.data(Cursor(value, 0), data)
+    override fun <V: VO> from(data:V, value: String):Wrap<V> = W(data)//VOSNfrom.data(Cursor(value, 0), data)
 }

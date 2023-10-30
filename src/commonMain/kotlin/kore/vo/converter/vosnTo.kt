@@ -19,48 +19,38 @@ import kore.wrap.Wrap
 import kotlin.reflect.KClass
 
 internal object VOSNto{
-    class EncodeEnum(val enums:Array<*>, val value:Any):E(value)
-    class EncodeDataNoFieldAll(val data:VO): E(data)
-    class EncodeDataNoField(val data:VO, val field:String): E(data, field)
-    class EncodeDataNoValue(val data:VO): E(data)
-    class EncodeDataNoInitialized(val data:VO): E(data)
-    class EncodeNoEnum(val enums:Array<*>, val value:Any): E(enums, value)
-    class EncodeInvalidUnion(val sum: VOSum<*>, val it:Any):E(sum, it)
+    class ToEnum(val enums:Array<*>, val value:Any):E(value)
+    class ToVONoInitialized(val data:VO): E(data)
+    class ToNoEnum(val enums:Array<*>, val value:Any): E(enums, value)
+    class ToInvalidSum(val sum: VOSum<*>, val it:Any):E(sum, it)
     private inline fun encode(type:KClass<*>, v:Any, field: Field<*>):Wrap<String> = encoders[type]?.invoke(v, field) ?: W("$v")
     fun vo(d:Any):Wrap<String>{
         val vo:VO = d as VO
-        val fields:HashMap<String, Field<*>> = vo.getFields() ?: return W(EncodeDataNoInitialized(vo))
-        val tasks: HashMap<String, Task> = vo.getTasks() ?: return W(EncodeDataNoInitialized(vo))
-        return VO.fields(vo.type)?.joinToString("") {key->
-            val task: Task? = tasks[key]
-            val include: ((String, Any?) -> Boolean)? = task?.include
+        val fields:HashMap<String, Field<*>> = vo.getFields() ?: return W(ToVONoInitialized(vo))
+        val tasks: HashMap<String, Task> = vo.getTasks() ?: return W(ToVONoInitialized(vo))
+        val keys: List<String> = VO.fields(vo.type) ?: return W(ToVONoInitialized(vo))
+        var result: String = ""
+        var i = 0
+        while(i < keys.size){
+            val key = keys[i++]
+            val include: ((String, Any?) -> Boolean)? = tasks[key]?.include
             val v = vo[key]
-            v?.let {
-                if(include?.invoke(key, v) == false) "" else {
-                    encode(field::class, value, field).effect {
-                        result[index] = it
+            result += (
+                if(v != null){
+                    if(include?.invoke(key, v) == false) "" else {
+                        val field = fields[key]
+                        if(field != null) encode(field::class, v, field).getOrFailEffect { return W(it) }
+                        else ""
                     }
-                    ""
-                }
-            } ?: if(include == _optinal) OPTIONAL_NULL else ""
-        }?.let{W(it)} ?: W(EncodeDataNoInitialized(vo))
-
-
-            when{
-                include == Field.isOptional-> v ?: OPTIONAL_NULL
-                include?.invoke(vo) == false-> null
-                else-> v ?: task?.getDefault(vo) ?:return W(EncodeDataNoField(vo, k))
-            }?.let{value->
-                if(value == OPTIONAL_NULL) result[index] = OPTIONAL_NULL
-                else
-            }
+                }else if(include == _optinal) OPTIONAL_NULL else ""
+            ) + "|"
         }
-        return W(result.joinToString("|", postfix="|"))
+        return W(result)
     }
-    private inline fun union(it:Any, union: Union<*>):Wrap<String>{
+    private inline fun sum(it:Any, sum: VOSum<*>):Wrap<String>{
         val type:KClass<out Any> = it::class
-        val index:Int = union.type.indexOf(type)
-        return if(index == -1) W(EncodeInvalidUnion(union, it))
+        val index:Int = sum.type.indexOf(type)
+        return if(index == -1) W(ToInvalidSum(sum, it))
         else vo(it).map{
             index.toString() + (if(it.isNotBlank()) "|$it" else "")
         }
@@ -105,7 +95,7 @@ internal object VOSNto{
         EnumField::class to { v, field->
             val enums:Array<*> = (field as EnumField<*>).enums
             val index:Int = enums.indexOf(v)
-            if(index != -1) W("$index") else W(EncodeNoEnum(enums, v))
+            if(index != -1) W("$index") else W(ToNoEnum(enums, v))
         },
         EnumListField::class to { v, field ->
             val enums: Array<*> = (field as EnumListField<*>).enums
@@ -120,7 +110,7 @@ internal object VOSNto{
                     result += "|$index"
                     true
                 }
-            }) W(result(result)) else W(EncodeNoEnum(enums, error!!))
+            }) W(result(result)) else W(ToNoEnum(enums, error!!))
         },
         EnumMapField::class to { v, field->
             val enums:Array<*> = (field as EnumMapField<*>).enums
@@ -135,7 +125,7 @@ internal object VOSNto{
                     result += "|" + encodeString(k) + "|" + index.toString()
                     true
                 }
-            }) W(result(result)) else W(EncodeEnum(enums, error!!))
+            }) W(result(result)) else W(ToEnum(enums, error!!))
         },
         VOField::class to { v, _-> vo(v) },
         VOListField::class to { v, _->
@@ -152,13 +142,13 @@ internal object VOSNto{
                 vo(it!!).isEffected{ result += "|${encodeString(k)}|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         },
-        VOSumField::class to { v, field-> union(v, (field as VOSumField<*>).sum) },
+        VOSumField::class to { v, field-> sum(v, (field as VOSumField<*>).sum) },
         VOSumListField::class to { v, field->
             val un: VOSum<VO> = (field as VOSumListField<*>).sum
             var result = ""
             var error:Throwable? = null
             if((v as List<*>).all{ e ->
-                union(e!!,un).isEffected{ result += "|$it" }?.let{error = it} == null
+                sum(e!!,un).isEffected{ result += "|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         },
         VOSumMapField::class to { v, field->
@@ -166,7 +156,7 @@ internal object VOSNto{
             val un: VOSum<VO> = (field as VOSumMapField<*>).sum
             var error:Throwable? = null
             if((v as Map<String, *>).all{ (k, it) ->
-                union(it!!, un).isEffected{ result += "|${encodeString(k)}|$it" }?.let{error = it} == null
+                sum(it!!, un).isEffected{ result += "|${encodeString(k)}|$it" }?.let{error = it} == null
             }) W(result(result)) else W(error!!)
         }
     )
