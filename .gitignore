@@ -43,3 +43,4 @@ bin/
 /kotlin-js-store
 /.idea
 /build
+/hs_err_pid12416.log

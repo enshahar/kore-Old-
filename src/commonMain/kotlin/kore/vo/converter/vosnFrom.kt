@@ -27,13 +27,12 @@ private val vo:Map.Entry<String, Field<*>> = object:Map.Entry<String, Field<*>>{
 }
 //fun getDecodeStringValue(cursor: Cursor):String = KoreDecoder.decodeStringValue(cursor)
 internal object VOSNfrom{
-    class DecodeInvalidEmptyData(val vo: VO, val cursor:Int): E(vo)
-    class DecodeNoDecoder(val field:Field<*>, val cursor:Int, val encoded:String): E(field, cursor, encoded)
-    class DecodeInvalidValue(val field:Field<*>, val target:String, val cursor:Int): E(field, target, cursor)
-    class DecodeInvalidListValue(val field:Field<*>, val target:String, val index:Int): E(field, target, index)
-    class DecodeInvalidMapValue(val field:Field<*>, val target:String, val key:String): E(field, target, key)
+    class FromNoDecoder(val field:Field<*>, val cursor:Int, val encoded:String): E(field, cursor, encoded)
+    class FromInvalidValue(val field:Field<*>, val target:String, val cursor:Int): E(field, target, cursor)
+    class FromInvalidListValue(val field:Field<*>, val target:String, val index:Int): E(field, target, index)
+    class FromInvalidMapValue(val field:Field<*>, val target:String, val key:String): E(field, target, key)
     private inline fun from(cursor:Cursor, field: Field<*>):Wrap<Any>{
-        return decoders[field::class]?.invoke(cursor, field) ?: W(DecodeNoDecoder(field, cursor.v, cursor.encoded))
+        return decoders[field::class]?.invoke(cursor, field) ?: W(FromNoDecoder(field, cursor.v, cursor.encoded))
     }
     internal fun <V:VO> vo(cursor:Cursor, vo:V):Wrap<V>{
         val fields:HashMap<String, Field<*>> = vo.getFields() ?: return W(VOSNto.ToVONoInitialized(vo))
@@ -57,7 +56,7 @@ internal object VOSNfrom{
     }
     private inline fun<VALUE:Any> value(cursor:Cursor, field: Field<*>, block:String.()->VALUE?):Wrap<VALUE>{
         val target: String = cursor.nextValue
-        return block(target)?.let{ W(it) } ?: W(DecodeInvalidValue(field, target, cursor.v))
+        return block(target)?.let{ W(it) } ?: W(FromInvalidValue(field, target, cursor.v))
     }
     private inline fun <VALUE:Any> valueList(cursor: Cursor, field: Field<*>, crossinline block:String.()->Wrap<VALUE>):Wrap<List<VALUE>>{
         return cursor.nextValueList.flatMap{list->
@@ -115,24 +114,24 @@ internal object VOSNfrom{
         FloatField::class to { c, f->value(c, f){toFloatOrNull()}},
         DoubleField::class to { c, f->value(c, f){toDoubleOrNull()}},
         BooleanField::class to { c, f->value(c, f){toBooleanStrictOrNull()}},
-        IntListField::class to { c, f->valueList(c, f){toIntOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        ShortListField::class to { c, f->valueList(c, f){toUShortOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        LongListField::class to { c, f->valueList(c, f){toLongOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        UIntListField::class to { c, f->valueList(c, f){toUIntOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        UShortListField::class to { c, f->valueList(c, f){toUShortOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        ULongListField::class to { c, f->valueList(c, f){toULongOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        FloatListField::class to { c, f->valueList(c, f){toFloatOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        DoubleListField::class to { c, f->valueList(c, f){toDoubleOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        BooleanListField::class to { c, f->valueList(c, f){toBooleanStrictOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}},
-        IntMapField::class to { c, f->valueMap(c, f){ k, v->v.toIntOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
-        ShortMapField::class to { c, f->valueMap(c, f){k, v->v.toUShortOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
-        LongMapField::class to { c, f->valueMap(c, f){k, v->v.toLongOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
-        UIntMapField::class to { c, f->valueMap(c, f){k, v->v.toUIntOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
-        UShortMapField::class to { c, f->valueMap(c, f){k, v->v.toUShortOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
-        ULongMapField::class to { c, f->valueMap(c, f){k, v->v.toULongOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
-        FloatMapField::class to { c, f->valueMap(c, f){k, v->v.toFloatOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
-        DoubleMapField::class to { c, f->valueMap(c, f){k, v->v.toDoubleOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
-        BooleanMapField::class to { c, f->valueMap(c, f){k, v->v.toBooleanStrictOrNull()?.let{W(it)} ?: W(DecodeInvalidMapValue(f, k, v))}},
+        IntListField::class to { c, f->valueList(c, f){toIntOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        ShortListField::class to { c, f->valueList(c, f){toUShortOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        LongListField::class to { c, f->valueList(c, f){toLongOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        UIntListField::class to { c, f->valueList(c, f){toUIntOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        UShortListField::class to { c, f->valueList(c, f){toUShortOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        ULongListField::class to { c, f->valueList(c, f){toULongOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        FloatListField::class to { c, f->valueList(c, f){toFloatOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        DoubleListField::class to { c, f->valueList(c, f){toDoubleOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        BooleanListField::class to { c, f->valueList(c, f){toBooleanStrictOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}},
+        IntMapField::class to { c, f->valueMap(c, f){ k, v->v.toIntOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
+        ShortMapField::class to { c, f->valueMap(c, f){k, v->v.toUShortOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
+        LongMapField::class to { c, f->valueMap(c, f){k, v->v.toLongOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
+        UIntMapField::class to { c, f->valueMap(c, f){k, v->v.toUIntOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
+        UShortMapField::class to { c, f->valueMap(c, f){k, v->v.toUShortOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
+        ULongMapField::class to { c, f->valueMap(c, f){k, v->v.toULongOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
+        FloatMapField::class to { c, f->valueMap(c, f){k, v->v.toFloatOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
+        DoubleMapField::class to { c, f->valueMap(c, f){k, v->v.toDoubleOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
+        BooleanMapField::class to { c, f->valueMap(c, f){k, v->v.toBooleanStrictOrNull()?.let{W(it)} ?: W(FromInvalidMapValue(f, k, v))}},
 //        UtcField::class to { _, serial, cursor, _-> KoreConverter.decodeStringValue(serial, cursor).let{ eUtc.of(it) } },
         StringField::class to {c, _->stringValue(c) },
         StringListField::class to {c, _-> stringList(c)},
@@ -154,8 +153,8 @@ internal object VOSNfrom{
         },
         EnumListField::class to {c, f->
             val enums = (f as EnumListField<*>).enums
-            valueList(c, f){toIntOrNull()?.let{W(it)} ?: W(DecodeInvalidListValue(f, this, c.v))}.flatMap{
-                it.flatMapList {item->if(enums.size > item) W(enums[item]) else W(DecodeInvalidListValue(f, "$item", c.v))}
+            valueList(c, f){toIntOrNull()?.let{W(it)} ?: W(FromInvalidListValue(f, this, c.v))}.flatMap{
+                it.flatMapList {item->if(enums.size > item) W(enums[item]) else W(FromInvalidListValue(f, "$item", c.v))}
             }
         },
         EnumMapField::class to {c, f->
@@ -163,8 +162,8 @@ internal object VOSNfrom{
             stringList(c).flatMap{
                 it.flatMapListToMap {k, v->
                     v.toIntOrNull()?.let{index->
-                        if(enums.size > index) W(enums[index]) else W(DecodeInvalidMapValue(f, k, v))
-                    } ?: W(DecodeInvalidMapValue(f, k, v))
+                        if(enums.size > index) W(enums[index]) else W(FromInvalidMapValue(f, k, v))
+                    } ?: W(FromInvalidMapValue(f, k, v))
                 }
             }
         },
