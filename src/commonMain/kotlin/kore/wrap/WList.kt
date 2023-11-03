@@ -2,9 +2,6 @@
 
 package kore.wrap
 
-import kore.fd.FList
-import kore.fd.fold
-import kore.fd.reverse
 import kore.wrap.WList.Cons
 import kore.wrap.WList.Nil
 

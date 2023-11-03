@@ -71,12 +71,12 @@ object VOSN: Converter<String> {
     )
     internal inline fun encodeString(v:Any?):String = "$v".replace(encodeStringRex){ encodeStringMap[it.value]!!}
     internal inline fun decodeString(v:String):String = v.replace(decodeStringRex){ decodeStringMap[it.value]!!}
-    fun setEncoder(type:KClass<*>,block:(Any, Field<*>)->Wrap<String>){
+    fun setTo(type:KClass<*>, block:(Any, Field<*>)->Wrap<String>){
         VOSNto.encoders[type] = block
     }
-//    fun setDecoder(type:KClass<*>,block:(cursor: Cursor, field: Field<*>)->Wrap<Any>){
-//        VOSNfrom.decoders[type] = block
-//    }
+    fun setFrom(type:KClass<*>, block:(cursor: Cursor, field: Field<*>)->Wrap<Any>){
+        VOSNfrom.decoders[type] = block
+    }
     override fun to(data: VO):Wrap<String> = VOSNto.vo(data)
-    override fun <V: VO> from(data:V, value: String):Wrap<V> = W(data)//VOSNfrom.data(Cursor(value, 0), data)
+    override fun <V: VO> from(data:V, value: String):Wrap<V> = VOSNfrom.vo(Cursor(value, 0), data)
 }

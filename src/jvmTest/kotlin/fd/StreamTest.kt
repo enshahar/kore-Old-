@@ -6,7 +6,13 @@ import kotlin.test.assertEquals
 
 class StreamTest {
     @Test
+    fun test0(){
+        val f = lazyIf({true}, {3}, {5})
+        assertEquals(f(), 3)
+    }
+    @Test
     fun test1(){
+        assertEquals(FStream(1,2,3,4).headOption().getOrElse { 10 }, 1)
         assertEquals(FStream({1}, { FStream() }).toFList().toString(), "Cons(head=1, tail=Nil)")
         assertEquals(FStream(1,2,3,4).toFList().toString(), "Cons(head=1, tail=Cons(head=2, tail=Cons(head=3, tail=Cons(head=4, tail=Nil))))")
         assertEquals(FStream(1,2,3,4).take(2).toFList().toString(), "Cons(head=1, tail=Cons(head=2, tail=Nil))")
@@ -15,6 +21,8 @@ class StreamTest {
         assertEquals(FStream(1,2,3,4).take(2).toList(), listOf(1,2))
         assertEquals(FStream(1,2,3,4).drop(2).toList(), listOf(3,4))
         assertEquals(FStream(1,2,3,4).takeWhile{it<3}.toList(), listOf(1,2))
+        assertEquals(FStream(1,2,3,4).takeWhile2{it<3}.toList(), listOf(1,2))
+        assertEquals(FStream(1,2,3,4).takeWhile3{it<3}.toList(), listOf(1,2))
         assertEquals(FStream(1,2,3,4).any{it == 2}, true)
         assertEquals(FStream(1,2,3,4).any{it == 5}, false)
         assertEquals(FStream(1,2,3,4).all{it < 5}, true)

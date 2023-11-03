@@ -28,7 +28,7 @@ value class Wrap<out VALUE:Any> @PublishedApi internal constructor(@PublishedApi
         else -> Wrap(Thunk{block(value as VALUE)})
     }
     inline fun <OTHER:Any, ORIGIN:Any> List<ORIGIN>.flatMapList( block:(ORIGIN)->Wrap<OTHER>):Wrap<List<OTHER>>{
-        return W(fold(ArrayList(size)){acc, it->
+        return W(fold(ArrayList(size)){ acc, it->
             block(it).isEffected{acc.add(it)}?.let {return W(it)}
             acc
         })

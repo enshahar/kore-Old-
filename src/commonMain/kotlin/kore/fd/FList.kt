@@ -15,14 +15,14 @@ sealed class FList<out ITEM:Any>{
     }
 }
 inline val <ITEM:Any> FList<ITEM>.size:Int get() = this._size(0)
-inline val <ITEM:Any> FList<ITEM>.size1:Int get() = this.suspendableFold(0){ _, acc->acc + 1}
+inline val <ITEM:Any> FList<ITEM>.size1:Int get() = this.suspendableFold2(0){ _, acc->acc + 1}
 @PublishedApi internal tailrec fun <ITEM:Any> FList<ITEM>._size(acc:Int):Int
 = when(this) {
     is Cons -> tail._size(acc + 1)
     is Nil -> acc
 }
 inline fun <ITEM:Any> FList<ITEM>.toList():List<ITEM>
-= fold(listOf()){acc, it->acc + it}
+= fold(listOf()){ acc, it->acc + it}
 inline fun <ITEM:Any> FList<ITEM>.setHead(item:ITEM):FList<ITEM>
 = when(this){
     is Cons -> Cons(item, tail)
@@ -40,11 +40,11 @@ tailrec fun <ITEM:Any, ACC:Any> FList<ITEM>.fold(acc:ACC, block:(ACC, ITEM)->ACC
     is Nil -> acc
 }
 inline fun <ITEM:Any, ACC:Any> FList<ITEM>.foldIndexed(base:ACC, noinline block:(Int, ACC, ITEM)->ACC):ACC
-= fold(base to 0){(acc, index), it->block(index, acc, it) to index + 1}.first
+= fold(base to 0){ (acc, index), it->block(index, acc, it) to index + 1}.first
 inline fun <ITEM:Any> FList<ITEM>.reverse(): FList<ITEM>
-= fold(FList()){acc, it->Cons(it, acc)}
+= fold(FList()){ acc, it->Cons(it, acc)}
 fun <ITEM:Any, ACC:Any> FList<ITEM>.fold1(base:ACC, block:(ACC, ITEM)->ACC):ACC
-= suspendableFold({ it:ACC->it}){ item, acc->{acc(block(it, item))}}(base)
+= suspendableFold2({ it:ACC->it}){ item, acc->{acc(block(it, item))}}(base)
 tailrec fun <ITEM:Any, ACC:Any> FList<ITEM>._foldRight(base:ACC, origin:(ITEM, ACC)->ACC, block:(ACC)->ACC):ACC
 = when(this){
     is Cons -> when(tail) {
@@ -54,8 +54,8 @@ tailrec fun <ITEM:Any, ACC:Any> FList<ITEM>._foldRight(base:ACC, origin:(ITEM, A
     is Nil -> base
 }
 fun <ITEM:Any, ACC:Any> FList<ITEM>.foldRight3(base:ACC, block:(ITEM, ACC)->ACC):ACC
-= fold({it:ACC->it}){acc, item->{acc(block(item, it))}}(base)
-fun <ITEM:Any, ACC:Any> FList<ITEM>.foldRight2(base:ACC, block:(ITEM, ACC)->ACC):ACC
+= fold({ it:ACC->it}){ acc, item->{acc(block(item, it))}}(base)
+fun <ITEM:Any, ACC:Any> FList<ITEM>.suspendableFold(base:ACC, block:(ITEM, ACC)->ACC):ACC
 = _foldRight(base, block){it}
 tailrec fun <ITEM:Any, ACC:Any> FList<ITEM>._foldRightWhile(base:ACC, cond:(ITEM)->Boolean, origin:(ITEM, ACC)->ACC, block:(ACC)->ACC):ACC
 = when(this){
@@ -69,19 +69,19 @@ fun <ITEM:Any, ACC:Any> FList<ITEM>.foldRightWhile(base:ACC, cond:(ITEM)->Boolea
 = _foldRightWhile(base, cond, block){it}
 fun <ITEM:Any, ACC:Any> FList<ITEM>.foldRight1(base:ACC, block:(ITEM, ACC)->ACC):ACC
 = when(this){
-    is Cons -> block(head, tail.suspendableFold(base, block))
+    is Cons -> block(head, tail.suspendableFold2(base, block))
     is Nil -> base
 }
-inline fun <ITEM:Any, ACC:Any> FList<ITEM>.suspendableFold(base:ACC, crossinline block:(ITEM, ACC)->ACC):ACC
+inline fun <ITEM:Any, ACC:Any> FList<ITEM>.suspendableFold2(base:ACC, crossinline block:(ITEM, ACC)->ACC):ACC
 = reverse().fold(base){ acc, it->block(it, acc)}
 fun <ITEM:Any, ACC:Any> FList<ITEM>.foldRightIndexed(base:ACC, block:(Int, ITEM, ACC)->ACC):ACC
 = reverse().foldIndexed(base){index, acc, it->block(index, it, acc)}
 inline fun <ITEM:Any, OTHER:Any> FList<ITEM>.map(crossinline block:(ITEM)->OTHER): FList<OTHER>
-= suspendableFold(FList()){ it, acc->Cons(block(it), acc)}
+= suspendableFold2(FList()){ it, acc->Cons(block(it), acc)}
 inline fun <ITEM:Any, OTHER:Any> FList<ITEM>.flatMap(noinline block:(ITEM)-> FList<OTHER>):FList<OTHER>
-= suspendableFold(FList()){ it, acc->
+= suspendableFold2(FList()){ it, acc->
     when(val v = block(it)){
-        is Cons ->v.suspendableFold(acc, ::Cons)
+        is Cons ->v.suspendableFold2(acc, ::Cons)
         is Nil ->acc
     }
 }
@@ -90,12 +90,12 @@ fun <ITEM:Any, OTHER:Any> FList<ITEM>.flatMap2(block:(ITEM)-> FList<OTHER>):FLis
 fun FList<Double>.toStringList():FList<String> = map{"$it"}
 fun FList<Int>.increase():FList<Int> = map{it + 1}
 fun <ITEM:Any> FList<FList<ITEM>>.flatten1():FList<ITEM> = when(this){
-    is Cons -> drop(1).fold(head){acc, it->acc.append(it)}
+    is Cons -> drop(1).fold(head){ acc, it->acc.append(it)}
     is Nil -> this
 }
 
 fun <ITEM:Any> FList<FList<ITEM>>.flatten(): FList<ITEM>
-= suspendableFold(FList()){ it, acc->it.suspendableFold(acc, ::Cons)}
+= suspendableFold2(FList()){ it, acc->it.suspendableFold2(acc, ::Cons)}
 //** append-----------------------------------------------------------------*/
 fun <ITEM:Any> FList<ITEM>.append1(list: FList<ITEM> = FList()): FList<ITEM>
 = when(this){
@@ -103,7 +103,7 @@ fun <ITEM:Any> FList<ITEM>.append1(list: FList<ITEM> = FList()): FList<ITEM>
     is Nil -> list
 }
 inline fun <ITEM:Any> FList<ITEM>.append(list: FList<ITEM> = FList()): FList<ITEM>
-= suspendableFold(list, ::Cons)
+= suspendableFold2(list, ::Cons)
 inline fun <ITEM:Any> FList<ITEM>.copy():FList<ITEM>
 = append()
 inline operator fun <ITEM:Any> FList<ITEM>.plus(list:FList<ITEM>):FList<ITEM>
@@ -141,7 +141,7 @@ fun <ITEM:Any> FList<ITEM>.dropLast1(n:Int = 1):FList<ITEM>
 }
 //** utils-----------------------------------------------------------------*/
 fun <ITEM:Any> FList<ITEM>.filter(block:(ITEM)->Boolean): FList<ITEM>
-= suspendableFold(FList()){ it, acc->if(block(it)) Cons(it, acc) else acc}
+= suspendableFold2(FList()){ it, acc->if(block(it)) Cons(it, acc) else acc}
 fun <ITEM:Any> FList<ITEM>.filter1(block:(ITEM)->Boolean): FList<ITEM>
 = flatMap{if(block(it)) FList(it) else Nil}
 tailrec fun <ITEM:Any> FList<ITEM>.sliceFrom(item:ITEM): FList<ITEM>
@@ -161,7 +161,7 @@ tailrec fun <ITEM:Any> FList<ITEM>.startsWith(target:FList<ITEM>):Boolean
     is Nil -> target is Nil
 }
 fun <ITEM:Any> FList<ITEM>.startsWith1(target:FList<ITEM>):Boolean
-= fold(true to target){(acc, other), it->
+= fold(true to target){ (acc, other), it->
     when(other){
         is Cons -> if(acc && it == other.head) true to other.tail else false to FList()
         is Nil -> acc to other
@@ -181,7 +181,7 @@ tailrec operator fun <ITEM:Any> FList<ITEM>.contains(target: FList<ITEM>):Boolea
     is Nil -> target is Nil
 }
 inline fun <ITEM:Any, OTHER:Any, RESULT:Any> FList<ITEM>.zipWith(other: FList<OTHER>, noinline block:(ITEM, OTHER)->RESULT): FList<RESULT>
-= fold(FList<RESULT>() to other){(acc, other), it->
+= fold(FList<RESULT>() to other){ (acc, other), it->
     when(other){
         is Cons -> Cons(block(it, other.head), acc) to other.tail
         is Nil -> acc to other
