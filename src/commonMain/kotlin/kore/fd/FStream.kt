@@ -36,20 +36,10 @@ sealed class FStream<out ITEM:Any> {
     data class Cons<out ITEM:Any>(val head:()->ITEM, val tail:()-> FStream<ITEM>): FStream<ITEM>()
 }
 //** base-----------------------------------------------------------------*/
-tailrec fun <ITEM:Any, ACC:Any> FStream<ITEM>.fold(acc:()->ACC, block:(()->ACC, ITEM)->ACC):ACC = when(this){
-    is Cons -> tail().fold({block(acc, head())}, block)
-    is Empty -> acc()
-}
-inline fun <ITEM:Any> FStream<ITEM>.reverse(): FStream<ITEM>
-= fold({FStream()}){acc, it-> Cons({it}, acc) }
-fun <ITEM:Any,OTHER:Any> FStream<ITEM>.foldRight(emptyBlock:()->OTHER, consBlock:(ITEM, ()->OTHER)->OTHER):OTHER
-= reverse().fold(emptyBlock){acc, it->consBlock(it, acc)}
-//= when(this){
-//    is Empty -> emptyBlock()
-//    is Cons ->consBlock(head()){tail().foldRight(emptyBlock, consBlock)}
-//}
+fun <ITEM:Any,OTHER:Any> FStream<ITEM>.suspendableFold(empty:()->OTHER, cons:(()->ITEM, ()->OTHER)->OTHER):OTHER
+= if(this is Cons)cons(head){tail().suspendableFold(empty, cons)} else empty()
 fun <ITEM:Any, OTHER:Any> FStream<ITEM>.map(block:(ITEM)->OTHER): FStream<OTHER>
-= foldRight({FStream()}){it, acc-> FStream({block(it)}, acc)}
+= suspendableFold({FStream()}){ it, acc-> FStream({block(it())}, acc)}
 fun <ITEM:Any, OTHER:Any> FStream<ITEM>.map2(block:(ITEM)->OTHER): FStream<OTHER>
 = FStream.unfold(this){
     when(it){
@@ -58,23 +48,19 @@ fun <ITEM:Any, OTHER:Any> FStream<ITEM>.map2(block:(ITEM)->OTHER): FStream<OTHER
     }
 }
 inline fun <ITEM:Any, OTHER:Any> FStream<ITEM>.flatMap(noinline block:(ITEM)-> FStream<OTHER>):FStream<OTHER>
-= foldRight({FStream()}){it, acc->block(it).append(acc)}
+= suspendableFold({FStream()}){ it, acc->block(it()).append(acc)}
 fun <ITEM:Any> FStream<ITEM>.filter(block:(ITEM)->Boolean): FStream<ITEM>
-= foldRight({FStream()}){ it, acc->if(block(it)) FStream({it}, acc) else acc()}
+= suspendableFold({FStream()}){ it, acc->if(block(it())) FStream(it, acc) else acc()}
 //** append-----------------------------------------------------------------*/
 fun <ITEM:Any> FStream<ITEM>.append(other:()->FStream<ITEM> = {FStream()}): FStream<ITEM>
-= foldRight(other){it, acc-> FStream({it}, acc) }
+= suspendableFold(other){ it, acc-> FStream(it, acc) }
 inline fun <ITEM:Any> FStream<ITEM>.copy():FStream<ITEM> = append()
 inline operator fun <ITEM:Any> FStream<ITEM>.plus(stream:FStream<ITEM>):FStream<ITEM> = append({stream})
 
 fun <ITEM:Any> FStream<ITEM>.toList(): List<ITEM>
-= fold({listOf()}){acc, it->acc() + it}
+= suspendableFold({listOf()}){ it, acc-> acc() + it()}
 fun <ITEM:Any> FStream<ITEM>.toFList(): FList<ITEM>
-= foldRight({FList()}){it,acc->FList.Cons(it, acc())}
-//= when(this){
-//    is Empty -> FList()
-//    is Cons -> FList.Cons(head(), tail().toList())
-//}
+= suspendableFold({FList()}){ it, acc->FList.Cons(it(), acc())}
 fun <ITEM:Any> FStream<ITEM>.take(n:Int): FStream<ITEM>
 = if(this is Cons && n > 0) FStream(head) { tail().take(n - 1) } else FStream()
 //= when(this){
@@ -89,7 +75,7 @@ fun <ITEM:Any> FStream<ITEM>.take2(n:Int): FStream<ITEM>
     }
 }
 fun <ITEM:Any> FStream<ITEM>.takeWhile(block:(ITEM)->Boolean): FStream<ITEM>
-= foldRight({FStream()}){it, acc->if(block(it)) FStream({it}, acc) else FStream()}
+= suspendableFold({FStream()}){ it, acc->if(block(it())) FStream(it, acc) else FStream()}
 //= if(this is Stream.Cons && block(_head())) Stream(_head) { _tail().takeWhile(block) } else Stream()
 //= when(this){
 //    is Stream.Empty -> Stream()
@@ -155,11 +141,11 @@ tailrec operator fun <ITEM:Any> FStream<ITEM>.contains(item:ITEM):Boolean
     is Cons->if(item == head()) true else tail().contains(item)
 }
 fun <ITEM:Any> FStream<ITEM>.any(block:(ITEM)->Boolean):Boolean
-= foldRight({false}){it, acc->block(it) || acc()}
+= suspendableFold({false}){ it, acc->block(it()) || acc()}
 fun <ITEM:Any> FStream<ITEM>.all(block:(ITEM)->Boolean):Boolean
-= foldRight({true}){it, acc->block(it) && acc()}
+= suspendableFold({true}){ it, acc->block(it()) && acc()}
 val <ITEM:Any> FStream<ITEM>.headOption: FOption<ITEM> get()
-= foldRight({ FOption() }){ it, _-> FOption(it) }
+= suspendableFold({ FOption() }){ it, _-> FOption(it()) }
 //= when(this){
 //    is Stream.Empty->Option()
 //    is Stream.Cons->Option(_head())
@@ -168,7 +154,7 @@ fun <ITEM:Any, ACC:Any> FStream<ITEM>.scanRight(acc:ACC, block:(ITEM, ACC)->ACC)
 = FStream.unfold(this to true){(stream, isAdd)->
     when(stream){
         is Empty -> if(isAdd) FOption(acc to (stream to false)) else FOption()
-        is Cons -> FOption(stream.foldRight({acc}){it, acc->block(it, acc())} to (stream.tail() to true))
+        is Cons -> FOption(stream.suspendableFold({acc}){ it, acc->block(it(), acc())} to (stream.tail() to true))
     }
 }
 fun <ITEM:Any> FStream<ITEM>.tails():FStream<FStream<ITEM>>
