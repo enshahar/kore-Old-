@@ -27,5 +27,6 @@ fun <ITEM:Any, OTHER:Any> FTree<ITEM>.fold(leafBlock:(ITEM)->OTHER, branchBlock:
     is Leaf -> leafBlock(item)
     is Branch -> branchBlock(left.fold(leafBlock, branchBlock), right.fold(leafBlock, branchBlock))
 }
-fun <ITEM:Any, OTHER:Any> FTree<ITEM>.map(block:(ITEM)->OTHER): FTree<OTHER> = fold({FTree(block(it))}){ l, r->FTree(l, r)}
+fun <ITEM:Any, OTHER:Any> FTree<ITEM>.map(block:(ITEM)->OTHER): FTree<OTHER> =
+    fold({FTree(block(it))}){ l, r->FTree(l, r)}
 operator fun <ITEM:Any> FTree<ITEM>.contains(item:ITEM):Boolean = fold({it == item}){ l, r-> l || r}
