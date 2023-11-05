@@ -12,7 +12,6 @@ import kore.vo.field.value.int
 import kore.vo.field.value.string
 import kotlin.test.Test
 import kotlin.test.assertEquals
-
 class ToVOSN {
     class Test1: VO(){
         var a by string
