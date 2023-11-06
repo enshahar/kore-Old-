@@ -1,5 +1,5 @@
 plugins {
-    kotlin("multiplatform") version "1.9.10"
+    kotlin("multiplatform") version "1.9.20"
 }
 
 repositories {
@@ -8,6 +8,7 @@ repositories {
 
 kotlin {
     jvm{
+        withJava()
         compilations.all {
             kotlinOptions {
                 jvmTarget = "17"
@@ -16,7 +17,7 @@ kotlin {
         }
     }
     @Suppress("OPT_IN_USAGE")
-    wasm {
+    wasmJs {
         binaries.executable()
         browser {
 
@@ -31,7 +32,7 @@ kotlin {
         }
         val jvmMain by getting
         val jvmTest by getting
-        val wasmMain by getting
-        val wasmTest by getting
+        val wasmJsMain by getting
+        val wasmJsTest by getting
     }
 }

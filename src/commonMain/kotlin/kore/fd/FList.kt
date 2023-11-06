@@ -22,7 +22,7 @@ inline val <ITEM:Any> FList<ITEM>.size1:Int get() = this.suspendableFold2(0){ _,
     is Nil -> acc
 }
 inline fun <ITEM:Any> FList<ITEM>.toList():List<ITEM>
-= fold(listOf()){ acc, it->acc + it}
+= this.fold(listOf()){ acc, it->acc + it}
 inline fun <ITEM:Any> FList<ITEM>.setHead(item:ITEM):FList<ITEM>
 = when(this){
     is Cons -> Cons(item, tail)
@@ -40,9 +40,9 @@ tailrec fun <ITEM:Any, ACC:Any> FList<ITEM>.fold(acc:ACC, block:(ACC, ITEM)->ACC
     is Nil -> acc
 }
 inline fun <ITEM:Any, ACC:Any> FList<ITEM>.foldIndexed(base:ACC, noinline block:(Int, ACC, ITEM)->ACC):ACC
-= fold(base to 0){ (acc, index), it->block(index, acc, it) to index + 1}.first
+= this.fold(base to 0){ (acc, index), it->block(index, acc, it) to index + 1}.first
 inline fun <ITEM:Any> FList<ITEM>.reverse(): FList<ITEM>
-= fold(FList()){ acc, it->Cons(it, acc)}
+= this.fold(FList()){ acc, it->Cons(it, acc)}
 fun <ITEM:Any, ACC:Any> FList<ITEM>.fold1(base:ACC, block:(ACC, ITEM)->ACC):ACC
 = suspendableFold2({ it:ACC->it}){ item, acc->{acc(block(it, item))}}(base)
 tailrec fun <ITEM:Any, ACC:Any> FList<ITEM>._foldRight(base:ACC, origin:(ITEM, ACC)->ACC, block:(ACC)->ACC):ACC
@@ -54,8 +54,8 @@ tailrec fun <ITEM:Any, ACC:Any> FList<ITEM>._foldRight(base:ACC, origin:(ITEM, A
     is Nil -> base
 }
 fun <ITEM:Any, ACC:Any> FList<ITEM>.foldRight3(base:ACC, block:(ITEM, ACC)->ACC):ACC
-= fold({ it:ACC->it}){ acc, item->{acc(block(item, it))}}(base)
-fun <ITEM:Any, ACC:Any> FList<ITEM>.suspendableFold(base:ACC, block:(ITEM, ACC)->ACC):ACC
+= this.fold({ it:ACC->it}){ acc, item->{acc(block(item, it))}}(base)
+fun <ITEM:Any, ACC:Any> FList<ITEM>.foldRight(base:ACC, block:(ITEM, ACC)->ACC):ACC
 = _foldRight(base, block){it}
 tailrec fun <ITEM:Any, ACC:Any> FList<ITEM>._foldRightWhile(base:ACC, cond:(ITEM)->Boolean, origin:(ITEM, ACC)->ACC, block:(ACC)->ACC):ACC
 = when(this){
@@ -161,7 +161,7 @@ tailrec fun <ITEM:Any> FList<ITEM>.startsWith(target:FList<ITEM>):Boolean
     is Nil -> target is Nil
 }
 fun <ITEM:Any> FList<ITEM>.startsWith1(target:FList<ITEM>):Boolean
-= fold(true to target){ (acc, other), it->
+= this.fold(true to target){ (acc, other), it->
     when(other){
         is Cons -> if(acc && it == other.head) true to other.tail else false to FList()
         is Nil -> acc to other
@@ -181,7 +181,7 @@ tailrec operator fun <ITEM:Any> FList<ITEM>.contains(target: FList<ITEM>):Boolea
     is Nil -> target is Nil
 }
 inline fun <ITEM:Any, OTHER:Any, RESULT:Any> FList<ITEM>.zipWith(other: FList<OTHER>, noinline block:(ITEM, OTHER)->RESULT): FList<RESULT>
-= fold(FList<RESULT>() to other){ (acc, other), it->
+= this.fold(FList<RESULT>() to other){ (acc, other), it->
     when(other){
         is Cons -> Cons(block(it, other.head), acc) to other.tail
         is Nil -> acc to other
