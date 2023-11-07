@@ -23,7 +23,7 @@ class StreamTest {
 
         assertEquals(FStream(1,2,3,4).takeWhile{it<3}.toList(), listOf(1,2))
 
-        assertEquals(FStream(1,2,3,4).takeWhile2{it<3}.toList(), listOf(1,2))
+        assertEquals(FStream(1,2,3,4).takeWhileUnfold{it<3}.toList(), listOf(1,2))
 
         assertEquals(FStream(1,2,3,4).any{it == 2}, true)
         assertEquals(FStream(1,2,3,4).any{it == 5}, false)
@@ -58,9 +58,9 @@ class StreamTest {
         assertEquals(FStream.fib3().take(7).toList(), listOf(0,1,1,2,3,5,8))
 
         println("-------2")
-        assertEquals(FStream.fib2().take2(7).toList(), listOf(0,1,1,2,3,5,8))
+        assertEquals(FStream.fib2().takeUnfold(7).toList(), listOf(0,1,1,2,3,5,8))
         println("-------3")
-        assertEquals(FStream(1,2,3,4).takeWhile2{it<3}.toList(), listOf(1,2))
+        assertEquals(FStream(1,2,3,4).takeWhileUnfold{it<3}.toList(), listOf(1,2))
 
         assertEquals(FStream(1,2,3,4).zipWith(FStream("1","2")){a,b->
             "$a$b"

@@ -37,8 +37,7 @@ sealed class FStream<out ITEM:Any> {
         inline operator fun <ITEM:Any> invoke(): FStream<ITEM> = Empty
         operator fun <ITEM:Any> invoke(vararg items:ITEM): FStream<ITEM>
         = unfold(items to 0){(items, n)->
-            if(items.isEmpty() || items.size <= n) invoke()
-            else invoke{{items[n]} to {items to n + 1}}
+            if(items.isEmpty() || items.size <= n) null else ({items[n]} to {items to n + 1})
         }
         //= invoke({items[0]}){invoke(*items.sliceArray(1..items.size))}
     }
@@ -49,33 +48,32 @@ fun <ITEM:Any,OTHER:Any> FStream<ITEM>.fold(
     cons:(head:()->ITEM, next:()->OTHER)->OTHER
 ):OTHER
 = if(this is Cons) cons(head){tail().fold(empty, cons)} else empty()
-fun <ITEM:Any, STATE:Any> FStream.Companion.unfold(state:STATE, block:(STATE)->FStream<Pair<()->ITEM, ()->STATE>>):FStream<ITEM>
-= when(val v = block(state)){
-    is Empty -> Empty
-    is Cons -> invoke({v.head().first()}){unfold(v.head().second(), block)}
-}
+fun <ITEM:Any, STATE:Any> FStream.Companion.unfold(
+    state:STATE,
+    block:(STATE)->Pair<()->ITEM, ()->STATE>?
+):FStream<ITEM>
+= block(state)?.let{(item, nextState)->invoke(item){unfold(nextState(), block)}} ?: Empty
 fun <ITEM:Any, STATE:Any> FStream.Companion.unfoldOption(
     state:STATE,
     block:(STATE)->FOption<Pair<()->ITEM, ()->STATE>>
 ):FStream<ITEM>
 = when(val v = block(state)){
-    is FOption.None -> Empty
-    is FOption.Some -> {
-        val (item, nextState) = v.value
+    is FOption.Some -> v.value.let{(item, nextState)->
         invoke(item){unfoldOption(nextState(), block)}
     }
+    is FOption.None -> Empty
 }
 //----------------------------------------------------------------------------
 fun <ITEM:Any> FStream.Companion.constant(item:ITEM):FStream<ITEM> = FStream({item}){constant(item)}
 fun <ITEM:Any> FStream.Companion.constant2(item:ITEM):FStream<ITEM> = unfoldOption(item){FOption({it} to {it})}
-fun <ITEM:Any> FStream.Companion.constant3(item:ITEM):FStream<ITEM> = unfold(item){ FStream.invoke { { it } to { it } } }
+fun <ITEM:Any> FStream.Companion.constant3(item:ITEM):FStream<ITEM> = unfold(item){{it} to {it}}
 fun FStream.Companion.increaseFrom(item:Int):FStream<Int> = FStream({item}){increaseFrom(item + 1)}
 fun FStream.Companion.increaseFrom2(item:Int):FStream<Int> = unfoldOption(item){FOption({it} to {it + 1})}
-fun FStream.Companion.increaseFrom3(item:Int):FStream<Int> = unfold(item){ FStream.invoke { { it } to { it + 1 } } }
+fun FStream.Companion.increaseFrom3(item:Int):FStream<Int> = unfold(item){{it} to {it + 1}}
 private fun _fib(prevprev:Int, prev:Int):FStream<Int> = FStream({prevprev + prev}){ _fib(prev, prevprev + prev)}
 fun FStream.Companion.fib():FStream<Int> = FStream({0}){FStream({1}){ _fib(0, 1)}}
 fun FStream.Companion.fib2():FStream<Int> = FStream({0}){FStream({1}){unfoldOption(0 to 1){ (prevprev, prev)->FOption({prevprev + prev} to {prev to prevprev + prev})}}}
-fun FStream.Companion.fib3():FStream<Int> = FStream({0}){FStream({1}){unfold(0 to 1){ (prevprev, prev)-> FStream.invoke { { prevprev + prev } to { prev to prevprev + prev } } }}}
+fun FStream.Companion.fib3():FStream<Int> = FStream({0}){FStream({1}){unfold(0 to 1){(prevprev, prev)->{prevprev + prev} to {prev to prevprev + prev}}}}
 //----------------------------------------------------------------------------
 fun <ITEM:Any> FStream<ITEM>.headOption():FOption<ITEM>
 = fold({FOption()}){it, _->FOption(it())}
@@ -83,17 +81,12 @@ fun <ITEM:Any> FStream<ITEM>.headOption():FOption<ITEM>
 fun <ITEM:Any, OTHER:Any> FStream<ITEM>.map(block:(ITEM)->OTHER):FStream<OTHER>
 = fold({FStream()}){head, next-> FStream({block(head())}, next)}
 fun <ITEM:Any, OTHER:Any> FStream<ITEM>.mapUnfold(block:(ITEM)->OTHER):FStream<OTHER>
-= FStream.unfold(this){
-    when(it){
-        is Empty -> Empty
-        is Cons -> FStream{{block(it.head())} to it.tail}
-    }
-}
+= FStream.unfold(this){if(it is Cons) ({block(it.head())} to it.tail) else null}
 fun <ITEM:Any, OTHER:Any> FStream<ITEM>.mapUnfoldOption(block:(ITEM)->OTHER):FStream<OTHER>
 = FStream.unfoldOption(this){
     when(it){
-        is Empty -> FOption()
         is Cons -> FOption({block(it.head())} to it.tail)
+        is Empty -> FOption()
     }
 }
 inline fun <ITEM:Any, OTHER:Any> FStream<ITEM>.flatMap(noinline block:(ITEM)->FStream<OTHER>):FStream<OTHER>
@@ -120,56 +113,37 @@ fun <ITEM:Any> FStream<ITEM>.filter(block:(ITEM)->Boolean):FStream<ITEM>
 //}
 //** append-----------------------------------------------------------------*/
 fun <ITEM:Any> FStream<ITEM>.append(other:()->FStream<ITEM>):FStream<ITEM>
-= fold(other){it, acc-> FStream(it, acc)}
+= fold(other){head, next-> FStream(head, next)}
 fun <ITEM:Any> FStream<ITEM>.appendUnfold(other:()->FStream<ITEM>):FStream<ITEM>
 = FStream.unfold(this to other){(origin, other)->
     when(origin){
+        is Cons ->origin.head to {origin.tail() to other}
         is Empty -> when(val v = other()){
-            is Empty -> Empty
-            is Cons -> FStream{v.head to {origin to v.tail}}
+            is Cons -> v.head to {origin to v.tail}
+            is Empty -> null
         }
-        is Cons ->FStream{origin.head to {origin.tail() to other}}
     }
 }
 inline operator fun <ITEM:Any> FStream<ITEM>.plus(stream:FStream<ITEM>):FStream<ITEM> = append{stream}
 //** ----------------------------------------
 fun <ITEM:Any> FStream<ITEM>.toList():List<ITEM>
-= fold({listOf<ITEM>()}){ it, acc-> acc() + it()}.reversed()
+= fold({listOf<ITEM>()}){head, next->next() + head()}.reversed()
 fun <ITEM:Any> FStream<ITEM>.toFList():FList<ITEM>
-= fold({FList()}){ it, acc->FList.Cons(it(), acc())}
+= fold({FList()}){head, next->FList.Cons(head(), next())}
 fun <ITEM:Any> FStream<ITEM>.take(n:Int):FStream<ITEM>
+= if(this is Cons && n > 0) FStream(head){tail().take(n - 1)} else FStream()
+fun <ITEM:Any> FStream<ITEM>.takeUnfold(n:Int):FStream<ITEM>
 = FStream.unfold(this to n){(stream, n)->
-    when(stream){
-        is Empty -> Empty
-        is Cons -> if(n > 0) FStream{stream.head to {stream.tail() to n - 1}} else Empty
-    }
-}
-//= if(this is Cons && n > 0) FStream(head) { tail().take(n - 1) } else FStream()
-fun <ITEM:Any> FStream<ITEM>.take2(n:Int):FStream<ITEM>
-= FStream.unfoldOption(this to n) { (stream, n)->
-    when(stream){
-        is Empty -> FOption()
-        is Cons -> if (n > 0) FOption(stream.head to {stream.tail() to n - 1}) else FOption()
-    }
+    if(stream is Cons && n > 0) stream.head to {stream.tail() to n - 1} else null
 }
 fun <ITEM:Any> FStream<ITEM>.takeWhile(block:(ITEM)->Boolean):FStream<ITEM>
-= fold({FStream()}){ it, acc->if(block(it())) FStream(it, acc) else FStream()}
-fun <ITEM:Any> FStream<ITEM>.takeWhile2(block:(ITEM)->Boolean): FStream<ITEM>
-= FStream.unfoldOption(this) { stream ->
-    when (stream) {
-        is Empty -> FOption()
-        is Cons -> if(block(stream.head())) FOption(stream.head to stream.tail) else FOption()
-    }
-}
+= fold({FStream()}){head, next->if(block(head())) FStream(head, next) else FStream()}
+fun <ITEM:Any> FStream<ITEM>.takeWhileUnfold(block:(ITEM)->Boolean): FStream<ITEM>
+= FStream.unfold(this){if(it is Cons && block(it.head())) it.head to it.tail else null}
 fun <ITEM:Any, OTHER:Any, RESULT:Any> FStream<ITEM>.zipWith(other:FStream<OTHER>, block:(ITEM, OTHER)->RESULT):FStream<RESULT>
-= FStream.unfoldOption(this to other){(stream, other)->
-    when(stream){
-        is Empty -> FOption()
-        is Cons -> when(other){
-            is Empty -> FOption()
-            is Cons -> FOption({block(stream.head(), other.head())} to {stream.tail() to other.tail()})
-        }
-    }
+= FStream.unfold(this to other){(origin, other)->
+    if(origin is Cons && other is Cons) ({block(origin.head(), other.head())} to {origin.tail() to other.tail()})
+    else null
 }
 fun <ITEM:Any, OTHER:Any> FStream<ITEM>.zipAll(other:FStream<OTHER>):FStream<Pair<FOption<ITEM>, FOption<OTHER>>>
 = FStream.unfoldOption(this to other) { (stream, other) ->
