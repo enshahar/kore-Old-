@@ -169,11 +169,8 @@ fun <ITEM:Any, OTHER:Any> FStream<ITEM>.zipAll(other:FStream<OTHER>):FStream<Pai
 }
 tailrec fun <ITEM:Any> FStream<ITEM>.startsWith(target:FStream<ITEM>):Boolean = when(this){
     is Cons -> when(target){
-        is Cons -> if(head() == target.head()) when(val t = target.tail()){
-            is Cons -> tail().startsWith(t)
-            is Empty -> true
-        } else false
-        is Empty -> false
+        is Cons -> if(head() == target.head()) tail().startsWith(target.tail()) else false
+        is Empty -> true
     }
     is Empty -> target is Empty
 }
