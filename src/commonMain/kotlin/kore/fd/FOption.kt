@@ -34,14 +34,6 @@ sealed class FOption<out VALUE:Any> {
         }
     }
 }
-inline fun <VALUE:Any> catches(throwBlock:()->VALUE):VALUE? = try{
-    throwBlock()
-}catch (e:Throwable) {
-    null
-}
-
-inline fun <VALUE:Any, OTHER:Any> VALUE?.map(block:(VALUE)->OTHER):OTHER? = this?.let{block(it)}
-inline fun <VALUE:Any, OTHER:Any> VALUE?.flatMap(block:(VALUE)->OTHER?):OTHER? = this?.let{block(it)}
 
 fun <VALUE:Any, OTHER:Any> ((VALUE)->OTHER).lift():(FOption<VALUE>)->FOption<OTHER> = {it.map(this)}
 inline fun <VALUE:Any, OTHER:Any> FOption<VALUE>.map(block:(VALUE)->OTHER):FOption<OTHER> = when(this){

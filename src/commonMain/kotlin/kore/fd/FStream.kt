@@ -36,10 +36,10 @@ sealed class FStream<out ITEM:Any> {
         = Cons(head, tail)
         inline operator fun <ITEM:Any> invoke(): FStream<ITEM> = Empty
         operator fun <ITEM:Any> invoke(vararg items:ITEM): FStream<ITEM>
-        = unfold(items to 0){(items, n)->
-            if(items.isEmpty() || items.size <= n) null else ({items[n]} to {items to n + 1})
-        }
-        //= invoke({items[0]}){invoke(*items.sliceArray(1..items.size))}
+//        = unfold(items to 0){(items, n)->
+//            if(items.isEmpty() || items.size <= n) null else ({items[n]} to {items to n + 1})
+//        }
+        = invoke({items[0]}){invoke(*items.sliceArray(1..items.size))}
     }
 }
 //** base-----------------------------------------------------------------*/
@@ -49,29 +49,28 @@ fun <ITEM:Any, OTHER:Any> FStream<ITEM>.fold(
 ):OTHER
 = if(this is Cons) cons(head){tail().fold(empty, cons)} else empty()
 fun <ITEM:Any, STATE:Any, OTHER:Any> FStream<ITEM>.foldState(
-    baseState: STATE,
-    state:(STATE)->STATE,
+    state: STATE,
+    nextState:(STATE)->STATE,
     empty:(state:STATE)->OTHER,
     cons:(head:()->ITEM, state:STATE, next:()->OTHER)->OTHER
 ):OTHER
-= state(baseState).let{
-    if(this is Cons) cons(head, it){tail().foldState(it, state, empty, cons)} else empty(it)
-}
+= if(this is Cons) cons(head, state){tail().foldState(nextState(state), nextState, empty, cons)} else empty(state)
 fun <ITEM:Any, STATE:Any> FStream.Companion.unfold(
     state:STATE,
     block:(STATE)->Pair<()->ITEM, ()->STATE>?
 ):FStream<ITEM>
-= block(state)?.let{(item, nextState)->invoke(item){unfold(nextState(), block)}} ?: Empty
+= block(state)?.let{(item, nextState)->FStream(item){unfold(nextState(), block)}} ?: Empty
 fun <ITEM:Any, STATE:Any> FStream.Companion.unfoldOption(
     state:STATE,
     block:(STATE)->FOption<Pair<()->ITEM, ()->STATE>>
 ):FStream<ITEM>
-= when(val v = block(state)){
-    is FOption.Some -> v.value.let{(item, nextState)->
-        invoke(item){unfoldOption(nextState(), block)}
-    }
-    is FOption.None -> Empty
-}
+= block(state).map{(item, nextState)->FStream(item){unfoldOption(nextState(), block)}}.getOrElse{Empty}
+//= when(val v = block(state)){
+//    is FOption.Some -> v.value.let{(item, nextState)->
+//        invoke(item){unfoldOption(nextState(), block)}
+//    }
+//    is FOption.None -> Empty
+//}
 //----------------------------------------------------------------------------
 fun <ITEM:Any> FStream.Companion.constant(item:ITEM):FStream<ITEM> = FStream({item}){constant(item)}
 fun <ITEM:Any> FStream.Companion.constant2(item:ITEM):FStream<ITEM> = unfoldOption(item){FOption({it} to {it})}
@@ -129,7 +128,7 @@ fun <ITEM:Any> FStream<ITEM>.takeFold(n:Int):FStream<ITEM>
     {it - 1},
     {FStream()}
 ){head, state, next ->
-    if(state >= 0) FStream(head, next) else FStream()
+    if(state > 0) FStream(head, next) else FStream()
 }
 fun <ITEM:Any> FStream<ITEM>.takeUnfold(n:Int):FStream<ITEM>
 = FStream.unfold(this to n){(stream, n)->
@@ -141,8 +140,18 @@ fun <ITEM:Any> FStream<ITEM>.takeWhileUnfold(block:(ITEM)->Boolean): FStream<ITE
 = FStream.unfold(this){if(it is Cons && block(it.head())) it.head to it.tail else null}
 fun <ITEM:Any, OTHER:Any, RESULT:Any> FStream<ITEM>.zipWith(other:FStream<OTHER>, block:(ITEM, OTHER)->RESULT):FStream<RESULT>
 = FStream.unfold(this to other){(origin, other)->
-    if(origin is Cons && other is Cons) ({block(origin.head(), other.head())} to {origin.tail() to other.tail()})
+    if(origin is Cons && other is Cons) Pair({block(origin.head(), other.head())}){origin.tail() to other.tail()}
     else null
+}
+fun <ITEM:Any, OTHER:Any, RESULT:Any> FStream<ITEM>.zipWithFold(other:FStream<OTHER>, block:(ITEM, OTHER)->RESULT):FStream<RESULT>
+= foldState(
+    other,
+    {
+        if(it is Cons) it.tail() else FStream()
+    },
+    {FStream()}
+){head, state, next ->
+    if(state is Cons) FStream({block(head(), state.head())}, next) else FStream()
 }
 fun <ITEM:Any, OTHER:Any> FStream<ITEM>.zipAll(other:FStream<OTHER>):FStream<Pair<FOption<ITEM>, FOption<OTHER>>>
 = FStream.unfold(this to other){(origin, other)->
@@ -176,7 +185,7 @@ tailrec fun <ITEM:Any> FStream<ITEM>.drop(n:Int):FStream<ITEM>
 = if(this is Cons && n > 0) tail().drop(n - 1) else this
 fun <ITEM:Any> FStream<ITEM>.dropFold(n:Int):FStream<ITEM>
 = foldState(n, {it - 1}, {FStream()}){head, state, next ->
-    if(state < 0) FStream(head, next) else next()
+    if(state <= 0) FStream(head, next) else next()
 }
 tailrec operator fun <ITEM:Any> FStream<ITEM>.contains(block:(ITEM)->Boolean):Boolean = when(this){
     is Empty -> false
@@ -195,7 +204,7 @@ fun <ITEM:Any> FStream<ITEM>.tails():FStream<FStream<ITEM>>
 = FStream.unfold(this){if(it is Cons) Pair({it}, it.tail) else null} + FStream{FStream()}
 fun <ITEM:Any> FStream<ITEM>.tailsFold():FStream<FStream<ITEM>>
 = foldState(
-    {this},
+    {if(this is Cons) tail() else Empty},
     {{
         it().let{if(it is Cons) it.tail() else FStream()}
     }},

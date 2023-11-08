@@ -67,6 +67,9 @@ class StreamTest {
         assertEquals(FStream(1,2,3,4).zipWith(FStream("1","2")){a,b->
             "$a$b"
         }.toList(), listOf("11","22"))
+        assertEquals(FStream(1,2,3,4).zipWithFold(FStream("1","2")){a,b->
+            "$a$b"
+        }.toList(), listOf("11","22"))
         assertEquals(FStream(1,2,3,4).zipAll(FStream("1","2")).toList().map {(a,b)->
             a.getOrElse {0} to b.getOrElse { "0" }
         }, listOf(1 to "1",2 to "2", 3 to "0", 4 to "0"))
