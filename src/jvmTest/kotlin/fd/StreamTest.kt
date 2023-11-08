@@ -17,6 +17,7 @@ class StreamTest {
         assertEquals(FStream(1,2,3,4).toFList().toString(), "Cons(head=1, tail=Cons(head=2, tail=Cons(head=3, tail=Cons(head=4, tail=Nil))))")
         assertEquals(FStream(1,2,3,4).take(2).toFList().toString(), "Cons(head=1, tail=Cons(head=2, tail=Nil))")
         assertEquals(FStream(1,2,3,4).drop(2).toFList().toString(), "Cons(head=3, tail=Cons(head=4, tail=Nil))")
+        assertEquals(FStream(1,2,3,4).dropFold(2).toFList().toString(), "Cons(head=3, tail=Cons(head=4, tail=Nil))")
         assertEquals(FStream(1,2,3,4).toList(), listOf(1,2,3,4))
         assertEquals(FStream(1,2,3,4).take(2).toList(), listOf(1,2))
         assertEquals(FStream(1,2,3,4).drop(2).toList(), listOf(3,4))
@@ -58,6 +59,7 @@ class StreamTest {
         assertEquals(FStream.fib3().take(7).toList(), listOf(0,1,1,2,3,5,8))
 
         println("-------2")
+        assertEquals(FStream.fib2().takeFold(7).toList(), listOf(0,1,1,2,3,5,8))
         assertEquals(FStream.fib2().takeUnfold(7).toList(), listOf(0,1,1,2,3,5,8))
         println("-------3")
         assertEquals(FStream(1,2,3,4).takeWhileUnfold{it<3}.toList(), listOf(1,2))
@@ -71,6 +73,11 @@ class StreamTest {
         assertEquals(FStream(1,2,3,4).startsWith(FStream(1,2,3)),true)
         assertEquals(FStream(1,2,3,4).startsWith2(FStream(1,2,3)),true)
         assertEquals(FStream(1,2,3).tails().toList().map{it.toList()}, listOf(listOf(1,2,3), listOf(2,3), listOf(3), listOf()))
-        assertEquals(FStream(1,2,3).scanRight(0){a,b->a+b}.toList(), listOf(6,5,3,0))
+        assertEquals(FStream(1,2,3).tailsFold().toList().map{it.toList()}, listOf(listOf(1,2,3), listOf(2,3), listOf(3), listOf()))
+        assertEquals(FStream(1,2,3).tailsScan().toList().map{it.toList()}, listOf(listOf(1,2,3), listOf(2,3), listOf(3), listOf()))
+        assertEquals(FStream(1,2,3).scan(0){ a, b->a()+b()}.toList(), listOf(6,5,3,0))
+        assertEquals(FStream(1,2,3).scan(FStream()){ a, b->FStream(a, b)}.toList().map{it.toList()},
+            listOf(listOf(1,2,3), listOf(2,3), listOf(3), listOf())
+        )
     }
 }

@@ -23,22 +23,22 @@ fun FRand.nextNonNegative():Pair<Int, FRand>{
 }
 fun FRand.nextDouble():Pair<Double, FRand>{
     val (r, next) = nextNonNegative()
-    return r.toDouble() / Int.MAX_VALUE.toDouble() to next
+    return (if(r == 0) 0.0 else r.toDouble() / Int.MAX_VALUE.toDouble()) to next
 }
 fun FRand.nextIntDouble():Pair<Pair<Int, Double>, FRand>{
     val (r1, next1) = nextInt()
     val (r2, next2) = nextDouble()
     return r1 to r2 to next2
 }
-tailrec fun FRand._nextList(list:FList<Int>, count:Int):Pair<FList<Int>, FRand>
+tailrec fun FRand._nextIntList(list:FList<Int>, count:Int):Pair<FList<Int>, FRand>
 = if(count > 0){
     val (r, rand) = nextInt()
-    rand._nextList(list + FList(r), count - 1)
+    rand._nextIntList(list + FList(r), count - 1)
 }else list to this
-fun FRand.nextList(count:Int):Pair<FList<Int>, FRand> = _nextList(FList(), count)
+fun FRand.nextIntList(count:Int):Pair<FList<Int>, FRand> = _nextIntList(FList(), count)
 
 
-fun interface FRandState<VALUE:Any> : (FRand)->Pair<VALUE, FRand>{
+fun interface FRandState<VALUE:Any> : (FRand)->Pair<VALUE, FRand> {
     companion object{
         operator fun <VALUE:Any> invoke(f:(FRand)->Pair<VALUE, FRand>):FRandState<VALUE> = FRandState{f(it)}
     }
